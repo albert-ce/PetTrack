@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:pet_track/components/feed_button.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 
 class PetCard extends StatefulWidget {
-  const PetCard({super.key});
+  final Map<String, dynamic> petData;
+
+  const PetCard({super.key, required this.petData});
 
   @override
   State<PetCard> createState() => _PetCardState();
@@ -13,6 +17,22 @@ class PetCard extends StatefulWidget {
 class _PetCardState extends State<PetCard> {
   @override
   Widget build(BuildContext context) {
+    final pet = widget.petData;
+    final name = pet['name'] ?? 'Sense nom';
+    // final species = pet['species'] ?? 'Espècie desconeguda';
+    final breed = pet['breed'] ?? 'Raça desconeguda';
+    final birthDate =
+        pet['birthDate'] is Timestamp
+            ? (pet['birthDate'] as Timestamp).toDate()
+            : null;
+    final age = birthDate != null ? DateTime.now().year - birthDate.year : null;
+    final sex = pet['sex'] ?? '?';
+    final String? imagePath = pet['image'];
+    final imageProvider =
+        (imagePath != null && imagePath.startsWith('/'))
+            ? FileImage(File(imagePath))
+            : const AssetImage('assets/images/example.jpg') as ImageProvider;
+
     final double screenHeight = MediaQuery.of(context).size.height;
     final double cardHeight = screenHeight * 0.22;
     final double borderRadius = 20.0;
@@ -49,12 +69,7 @@ class _PetCardState extends State<PetCard> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Ink.image(
-                              image: const AssetImage(
-                                'assets/images/example.jpg',
-                              ),
-                              fit: BoxFit.cover,
-                            ),
+                            Ink.image(image: imageProvider, fit: BoxFit.cover),
                             Ink(
                               decoration: const BoxDecoration(
                                 gradient: LinearGradient(
@@ -80,16 +95,10 @@ class _PetCardState extends State<PetCard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Text(breed, style: AppTextStyles.tinyText(context)),
+                            Text(name, style: AppTextStyles.bigText(context)),
                             Text(
-                              'Labrador retriever',
-                              style: AppTextStyles.tinyText(context),
-                            ),
-                            Text(
-                              'Flusky',
-                              style: AppTextStyles.bigText(context),
-                            ),
-                            Text(
-                              'M   2 anys',
+                              '${sex.isNotEmpty ? sex[0].toUpperCase() : ''}   ${age != null ? '$age anys' : ''}',
                               style: AppTextStyles.midText(context),
                             ),
                           ],

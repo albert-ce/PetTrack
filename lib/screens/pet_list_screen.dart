@@ -1,10 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:pet_track/components/pet_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pet_track/screens/afegir_mascota_screen.dart';
+import 'package:pet_track/models/pets_db.dart';
 
 class PetListScreen extends StatefulWidget {
   const PetListScreen({super.key});
@@ -14,31 +13,41 @@ class PetListScreen extends StatefulWidget {
 }
 
 class _PetListScreenState extends State<PetListScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  var db = FirebaseFirestore.instance;
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
-            child: Text(
-              'Les meves mascotes',
-              style: AppTextStyles.titleText(context),
-            ),
-          ),
-          const PetCard(),
-          const PetCard(),
-          const PetCard(),
-        ],
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: getPets(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('Encara no tens mascotes'));
+          } else {
+            final pets = snapshot.data!;
+            return ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+                  child: Text(
+                    'Les meves mascotes',
+                    style: AppTextStyles.titleText(context),
+                  ),
+                ),
+                ...pets.map((pet) => PetCard(petData: pet)),
+              ],
+            );
+          }
+        },
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: null,
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => const AfegirMascotaScreen(),
@@ -51,26 +60,12 @@ class _PetListScreenState extends State<PetListScreen> {
               },
             ),
           );
-          // final User? user = _auth.currentUser;
-          // if (user != null) {
-          //   // Crear datos del usuario
-          //   final userData = <String, dynamic>{
-          //     "first": "Ada",
-          //     "last": "Lovelace",
-          //     "born": 1815,
-          //   };
-          //   // Add a new document with a generated ID
-          //   try {
-          //     await db.collection("users").doc(user.uid).set(userData);
-          //     print('Documento creado para el usuario: ${user.uid}');
-          //   } catch (e) {
-          //     print('Error al crear el documento: $e');
-          //   }
-          // } else {
-          //   print('No hay usuario autenticado');
-          //   // Aquí podrías mostrar un diálogo o navegar a la pantalla de login
-          // }
+
+          if (result == true) {
+            setState(() {});
+          }
         },
+
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Ink(
