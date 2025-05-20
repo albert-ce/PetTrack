@@ -3,6 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
+import 'package:pet_track/models/pets_db.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AfegirMascotaScreen extends StatefulWidget {
   const AfegirMascotaScreen({super.key});
@@ -273,8 +275,19 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(screenHeight * 0.015),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context, true);
+                        await addPet({
+                          'name': _nomController.text,
+                          'species': _tipusAnimal,
+                          'sex': _sexe,
+                          'meals': _menjars,
+                          'image': _imatge?.path,
+                          'birthDate': Timestamp.fromDate(
+                            _dataNaixement ?? DateTime.now(),
+                          ),
+                        });
+
                       },
                       child: Padding(
                         padding: EdgeInsets.symmetric(
