@@ -19,19 +19,30 @@ class _PetCardState extends State<PetCard> {
   Widget build(BuildContext context) {
     final pet = widget.petData;
     final name = pet['name'] ?? 'Sense nom';
-    // final species = pet['species'] ?? 'Espècie desconeguda';
+    final species = pet['species'] ?? 'Espècie desconeguda';
     final breed = pet['breed'] ?? 'Raça desconeguda';
     final birthDate =
         pet['birthDate'] is Timestamp
             ? (pet['birthDate'] as Timestamp).toDate()
             : null;
-    final age = birthDate != null ? DateTime.now().year - birthDate.year : null;
+    final ageText =
+        birthDate != null
+            ? () {
+              final now = DateTime.now();
+              final duration = now.difference(birthDate);
+              final months = (duration.inDays / 30).floor();
+              return months < 12
+                  ? '$months mesos'
+                  : '${(months / 12).floor()} anys';
+            }()
+            : '';
+
     final sex = pet['sex'] ?? '?';
     final String? imagePath = pet['image'];
     final imageProvider =
         (imagePath != null && imagePath.startsWith('/'))
             ? FileImage(File(imagePath))
-            : const AssetImage('assets/images/example.jpg') as ImageProvider;
+            : AssetImage('assets/images/$species.png') as ImageProvider;
 
     final double screenHeight = MediaQuery.of(context).size.height;
     final double cardHeight = screenHeight * 0.22;
@@ -98,7 +109,7 @@ class _PetCardState extends State<PetCard> {
                             Text(breed, style: AppTextStyles.tinyText(context)),
                             Text(name, style: AppTextStyles.bigText(context)),
                             Text(
-                              '${sex.isNotEmpty ? sex[0].toUpperCase() : ''}   ${age != null ? '$age anys' : ''}',
+                              '${sex.isNotEmpty ? sex[0].toUpperCase() : ''}   $ageText',
                               style: AppTextStyles.midText(context),
                             ),
                           ],

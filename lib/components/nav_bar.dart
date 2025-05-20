@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_track/core/app_colors.dart';
+import 'package:pet_track/core/app_styles.dart';
 
 class NavBar extends StatelessWidget {
   final int currentIndex;
@@ -18,6 +19,9 @@ class NavBar extends StatelessWidget {
       unselectedItemColor: AppColors.grey,
       showSelectedLabels: true,
       showUnselectedLabels: false,
+      selectedLabelStyle: AppTextStyles.tinyText(
+        context,
+      ).copyWith(fontWeight: FontWeight.w600),
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'Mascotes'),
         BottomNavigationBarItem(

@@ -136,7 +136,9 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                                   ),
                                 ),
                             child: Icon(
-                              Icons.add_a_photo,
+                              _imatge == null
+                                  ? Icons.add_a_photo
+                                  : Icons.check_circle,
                               size: screenHeight * 0.03,
                               color: Colors.white,
                             ),
@@ -153,7 +155,9 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                                   ),
                                 ),
                             child: Text(
-                              'Afegir imatge',
+                              _imatge == null
+                                  ? 'Afegir imatge'
+                                  : 'Imatge afegida',
                               style: AppTextStyles.primaryText(
                                 context,
                               ).copyWith(
@@ -287,7 +291,6 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                             _dataNaixement ?? DateTime.now(),
                           ),
                         });
-
                       },
                       child: Padding(
                         padding: EdgeInsets.symmetric(
