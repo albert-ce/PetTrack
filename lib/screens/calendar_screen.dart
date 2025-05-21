@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_track/core/app_colors.dart';
+import 'package:pet_track/core/app_styles.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -12,7 +13,7 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
-  CalendarFormat _calendarFormat = CalendarFormat.week;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime? _selectedDay;
 
   @override
@@ -39,16 +40,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     backgroundColor:
                         _calendarFormat == CalendarFormat.month
                             ? AppColors.primary
-                            : Colors.grey,
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
                       _calendarFormat = CalendarFormat.month;
                     });
                   },
-                  child: const Text(
+                  child: Text(
                     'Mes',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.midText(
+                      context,
+                    ).copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -60,16 +63,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     backgroundColor:
                         _calendarFormat == CalendarFormat.week
                             ? AppColors.primary
-                            : Colors.grey,
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
                       _calendarFormat = CalendarFormat.week;
                     });
                   },
-                  child: const Text(
+                  child: Text(
                     'Setmana',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.midText(
+                      context,
+                    ).copyWith(color: Colors.white),
                   ),
                 ),
               ),
