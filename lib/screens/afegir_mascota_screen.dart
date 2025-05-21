@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +7,8 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/models/pets_db.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class AfegirMascotaScreen extends StatefulWidget {
   const AfegirMascotaScreen({super.key});
@@ -16,11 +20,56 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _dataNaixementController =
       TextEditingController();
+  final TextEditingController _racaController = TextEditingController();
   DateTime? _dataNaixement;
   String? _tipusAnimal = 'gos';
   String? _sexe = '?';
   int _menjars = 4;
   XFile? _imatge;
+  String? _raca;
+  bool _carregantRaca = false;
+
+  Future<String> _obtenirRaca(File imatge) async {
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=$apiKey',
+    );
+    final base64Image = base64Encode(await imatge.readAsBytes());
+    final prompt = '''
+Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap altre text ni puntuació (com punt final). Si no ho saps, respon exactament així: Raça desconeguda
+''';
+
+    final body = jsonEncode({
+      "contents": [
+        {
+          "parts": [
+            {"text": prompt},
+            {
+              "inlineData": {"mimeType": "image/jpeg", "data": base64Image},
+            },
+          ],
+        },
+      ],
+    });
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        final text = json["candidates"]?[0]?["content"]?["parts"]?[0]?["text"];
+        if (text != null && text.trim().isNotEmpty) {
+          return text.trim();
+        }
+      }
+    } catch (_) {}
+
+    return 'Raça desconeguda';
+  }
 
   Future<void> _seleccionaImatge() async {
     final ImagePicker picker = ImagePicker();
@@ -30,23 +79,18 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
     if (imatgeSeleccionada != null) {
       setState(() {
         _imatge = imatgeSeleccionada;
+        _carregantRaca = true;
+        _raca = null;
+        _racaController.text = '';
       });
-    }
-  }
-
-  Future<void> _seleccionaData() async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        _dataNaixement = picked;
-        _dataNaixementController.text =
-            _dataNaixement!.toLocal().toString().split(' ')[0];
-      });
+      final raca = await _obtenirRaca(File(_imatge!.path));
+      if (mounted) {
+        setState(() {
+          _carregantRaca = false;
+          _raca = raca;
+          _racaController.text = raca;
+        });
+      }
     }
   }
 
@@ -75,7 +119,6 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
-
     final theme = Theme.of(context);
     final inputDecorationTheme = theme.inputDecorationTheme.copyWith(
       labelStyle: TextStyle(color: AppColors.primary),
@@ -83,7 +126,6 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
         borderSide: BorderSide(color: AppColors.primary),
       ),
     );
-
     return Theme(
       data: theme.copyWith(
         inputDecorationTheme: inputDecorationTheme,
@@ -172,6 +214,33 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.0125),
+                if (_carregantRaca)
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('Detectant raça amb IA...'),
+                      SizedBox(width: 8),
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  )
+                else if (_raca != null)
+                  TextField(
+                    controller: _racaController,
+                    style: TextStyle(fontSize: screenHeight * 0.02),
+                    decoration: InputDecoration(
+                      labelText: 'Raça detectada',
+                      suffixIcon: Icon(
+                        Icons.auto_awesome,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                SizedBox(height: screenHeight * 0.0125),
                 TextField(
                   controller: _nomController,
                   style: TextStyle(fontSize: screenHeight * 0.02),
@@ -179,7 +248,21 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                 ),
                 SizedBox(height: screenHeight * 0.008),
                 GestureDetector(
-                  onTap: _seleccionaData,
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _dataNaixement = picked;
+                        _dataNaixementController.text =
+                            _dataNaixement!.toLocal().toString().split(' ')[0];
+                      });
+                    }
+                  },
                   child: AbsorbPointer(
                     child: TextField(
                       controller: _dataNaixementController,
@@ -290,6 +373,7 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
                           'birthDate': Timestamp.fromDate(
                             _dataNaixement ?? DateTime.now(),
                           ),
+                          'breed': _raca ?? '',
                         });
                       },
                       child: Padding(
