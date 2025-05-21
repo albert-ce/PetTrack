@@ -2,12 +2,21 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pet_track/core/app_colors.dart';
 
 class FeedButton extends StatefulWidget {
   final double size;
   final Duration feedInterval;
+  final DateTime lastFed;
+  final VoidCallback onFeed;
 
-  const FeedButton({super.key, required this.size, required this.feedInterval});
+  const FeedButton({
+    super.key,
+    required this.size,
+    required this.feedInterval,
+    required this.lastFed,
+    required this.onFeed,
+  });
 
   @override
   State<FeedButton> createState() => _FeedButtonState();
@@ -16,12 +25,12 @@ class FeedButton extends StatefulWidget {
 class _FeedButtonState extends State<FeedButton> {
   late Timer _timer;
   late DateTime _lastFed;
-  double _progress = 1.0;
+  double _progress = 2.0;
 
   @override
   void initState() {
     super.initState();
-    _lastFed = DateTime.now();
+    _lastFed = widget.lastFed;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final p =
           1 -
@@ -42,6 +51,7 @@ class _FeedButtonState extends State<FeedButton> {
       _lastFed = DateTime.now();
       _progress = 1.0;
     });
+    widget.onFeed();
   }
 
   @override
@@ -88,6 +98,7 @@ class _CircleProgressPainter extends CustomPainter {
   _CircleProgressPainter({required this.progress});
 
   Color _getColor(double p) {
+    if (p > 1.0) return AppColors.accent;
     if (p > 0.4) return Colors.green;
     if (p > 0.2) return Colors.orange;
     return Colors.red;

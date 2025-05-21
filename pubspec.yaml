@@ -22,6 +22,7 @@ dependencies:
   cloud_firestore: ^5.6.7
   image_picker: ^1.0.4
   uuid: ^4.5.1
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
@@ -32,6 +33,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - .env
 
 flutter_icons:
   android: true

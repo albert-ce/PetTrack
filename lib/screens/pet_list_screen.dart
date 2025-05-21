@@ -13,13 +13,27 @@ class PetListScreen extends StatefulWidget {
 }
 
 class _PetListScreenState extends State<PetListScreen> {
+  late Future<List<Map<String, dynamic>>> _petsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _petsFuture = getPets();
+  }
+
+  Future<void> _refreshPets() async {
+    setState(() {
+      _petsFuture = getPets();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: getPets(),
+        future: _petsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -29,17 +43,20 @@ class _PetListScreenState extends State<PetListScreen> {
             return const Center(child: Text('Encara no tens mascotes'));
           } else {
             final pets = snapshot.data!;
-            return ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
-                  child: Text(
-                    'Les meves mascotes',
-                    style: AppTextStyles.titleText(context),
+            return RefreshIndicator(
+              onRefresh: _refreshPets,
+              child: ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+                    child: Text(
+                      'Les meves mascotes',
+                      style: AppTextStyles.titleText(context),
+                    ),
                   ),
-                ),
-                ...pets.map((pet) => PetCard(petData: pet)),
-              ],
+                  ...pets.map((pet) => PetCard(petData: pet)),
+                ],
+              ),
             );
           }
         },
@@ -62,10 +79,9 @@ class _PetListScreenState extends State<PetListScreen> {
           );
 
           if (result == true) {
-            setState(() {});
+            _refreshPets();
           }
         },
-
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Ink(
