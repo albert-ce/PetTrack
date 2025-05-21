@@ -5,29 +5,28 @@ import 'package:pet_track/core/app_styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 
-class PetCard extends StatefulWidget {
+class PetCard extends StatelessWidget {
   final Map<String, dynamic> petData;
+  final VoidCallback? onTap;
 
-  const PetCard({super.key, required this.petData});
+  const PetCard({Key? key, required this.petData, this.onTap})
+    : super(key: key);
 
-  @override
-  State<PetCard> createState() => _PetCardState();
-}
-
-class _PetCardState extends State<PetCard> {
   @override
   Widget build(BuildContext context) {
-    final pet = widget.petData;
-    final name = pet['name'] ?? 'Sense nom';
-    // final species = pet['species'] ?? 'Espècie desconeguda';
-    final breed = pet['breed'] ?? 'Raça desconeguda';
+    final name = petData['name'] ?? 'Sense nom';
+    final breed = petData['breed'] ?? 'Raça desconeguda';
+
     final birthDate =
-        pet['birthDate'] is Timestamp
-            ? (pet['birthDate'] as Timestamp).toDate()
+        petData['birthDate'] is Timestamp
+            ? (petData['birthDate'] as Timestamp).toDate()
             : null;
-    final age = birthDate != null ? DateTime.now().year - birthDate.year : null;
-    final sex = pet['sex'] ?? '?';
-    final String? imagePath = pet['image'];
+    final int? age =
+        birthDate != null ? DateTime.now().year - birthDate.year : null;
+
+    final sex = petData['sex'] ?? '?';
+
+    final String? imagePath = petData['image'];
     final imageProvider =
         (imagePath != null && imagePath.startsWith('/'))
             ? FileImage(File(imagePath))
@@ -35,9 +34,9 @@ class _PetCardState extends State<PetCard> {
 
     final double screenHeight = MediaQuery.of(context).size.height;
     final double cardHeight = screenHeight * 0.22;
-    final double borderRadius = 20.0;
-    final double horizontalPadding = 16.0;
-    final double verticalPadding = 16.0;
+    const double borderRadius = 20.0;
+    const double horizontalPadding = 16.0;
+    const double verticalPadding = 16.0;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -56,13 +55,13 @@ class _PetCardState extends State<PetCard> {
               InkWell(
                 borderRadius: BorderRadius.circular(borderRadius),
                 splashColor: AppColors.accent.withAlpha(30),
-                onTap: () {},
+                onTap: onTap,
                 child: Row(
                   children: [
                     SizedBox(
                       width: cardHeight,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.only(
+                        borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(borderRadius),
                           bottomLeft: Radius.circular(borderRadius),
                         ),
@@ -88,7 +87,7 @@ class _PetCardState extends State<PetCard> {
                     ),
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: horizontalPadding,
                           vertical: verticalPadding,
                         ),

@@ -5,7 +5,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final double height;
-  const AppBarWidget({super.key, required this.height});
+  final Color? iconColor;
+
+  const AppBarWidget({
+    super.key,
+    required this.height,
+    this.iconColor,
+  });
 
   @override
   Size get preferredSize => Size.fromHeight(height);
@@ -14,6 +20,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       toolbarHeight: height,
+      iconTheme: IconThemeData(color: iconColor ?? Colors.white),
       title: Row(
         children: [
           Text("PetTr", style: AppTextStyles.logoText(context)),

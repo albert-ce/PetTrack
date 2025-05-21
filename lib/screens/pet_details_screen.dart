@@ -1,51 +1,102 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pet_track/components/app_bar.dart'; // ⬅️ nuevo
+import 'package:pet_track/components/info_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 
 class PetDetailsScreen extends StatelessWidget {
-  const PetDetailsScreen({super.key});
+  final Map<String, dynamic> petData;
+  const PetDetailsScreen({Key? key, required this.petData}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final screenH = MediaQuery.of(context).size.height;
+    final screenW = MediaQuery.of(context).size.width;
 
+    // ────────── Dades bàsiques ──────────
+    final name = petData['name'] ?? 'Mascota';
+    final breed = petData['breed'] ?? 'Raça desconeguda';
+
+    int? age;
+    final bd = petData['birthDate'];
+    if (bd != null) {
+      final d = bd is DateTime ? bd : (bd is Timestamp ? bd.toDate() : null);
+      if (d != null) age = DateTime.now().year - d.year;
+    }
+    final ageStr = age != null ? (age == 1 ? '1 any' : '$age anys') : '';
+
+    final imgPath = petData['image'] as String?;
+    final ImageProvider imageProvider =
+        (imgPath != null && imgPath.startsWith('/'))
+            ? FileImage(File(imgPath))
+            : (imgPath != null && imgPath.startsWith('http'))
+            ? NetworkImage(imgPath)
+            : const AssetImage('assets/images/example.jpg');
+
+    // ────────── Menjars i passeigs ────────── A CANVIAR A BD PER IMPLEMENTAR BE
+    int? mealsDone;
+    final m = petData['meals'];
+    if (m is int) mealsDone = m;
+    if (m is List) mealsDone = m.length;
+    final mealsGoal =
+        petData['mealsGoal'] ?? petData['mealsTarget'] ?? petData['feedTarget'];
+    final feedText =
+        (mealsDone != null && mealsGoal != null)
+            ? '$mealsDone / $mealsGoal menjades'
+            : (mealsDone != null
+                ? '$mealsDone menjades'
+                : 'Menjars no assignats');
+
+    int? walksDone;
+    final w = petData['walks'];
+    if (w is int) walksDone = w;
+    if (w is List) walksDone = w.length;
+    final walksGoal =
+        petData['walksGoal'] ?? petData['walksTarget'] ?? petData['walkTarget'];
+    final walkText =
+        (walksDone != null && walksGoal != null)
+            ? '$walksDone / $walksGoal'
+            : (walksDone != null
+                ? '$walksDone passeigs'
+                : 'Passeigs no registrats');
+
+    // ────────── UI ──────────
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBarWidget(height: screenH * 0.10),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FOTO + INFO BÁSICA -------------------------------------------------
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: screenWidth * 0.40,
-                  height: screenWidth * 0.40,
+                  width: screenW * .40,
+                  height: screenW * .40,
                   decoration: BoxDecoration(
-                    color: AppColors.backgroundComponent,
                     borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.pets, size: 48, color: AppColors.grey),
+                    image: DecorationImage(
+                      image: imageProvider,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Nombre, raza y edad
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Nombre', style: AppTextStyles.bigText(context)),
+                      Text(name, style: AppTextStyles.bigText(context)),
                       const SizedBox(height: 5),
-                      Text(
-                        'Golden Retriever',
-                        style: AppTextStyles.midText(context),
-                      ),
-                      const SizedBox(height: 2),
-                      Text('2 años', style: AppTextStyles.tinyText(context)),
+                      Text(breed, style: AppTextStyles.midText(context)),
+                      if (ageStr.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(ageStr, style: AppTextStyles.tinyText(context)),
+                      ],
                     ],
                   ),
                 ),
@@ -54,16 +105,14 @@ class PetDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // EVENTO PRÓXIMO ----------------------------------------------------
             Center(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.notifications_none, color: AppColors.accent),
                   const SizedBox(width: 8),
                   Text(
-                    'No hay eventos próximos',
+                    'No hi ha esdeveniments propers',
                     style: AppTextStyles.midText(context),
                   ),
                 ],
@@ -72,41 +121,37 @@ class PetDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // WIDGETS DE ALIMENTACIÓN Y PASEOS ---------------------------------
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: _InfoCard(
+                    child: InfoCard(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Alimentación',
+                            'Alimentació',
                             style: AppTextStyles.titleText(context),
-                            maxLines: 1,
                           ),
                           const SizedBox(height: 4),
-                          Text('3 / 4', style: AppTextStyles.midText(context)),
+                          Text(feedText, style: AppTextStyles.midText(context)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _InfoCard(
+                    child: InfoCard(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Paseos',
+                            'Passeigs',
                             style: AppTextStyles.titleText(context),
                           ),
                           const SizedBox(height: 4),
-                          Text('2 / 4', style: AppTextStyles.midText(context)),
+                          Text(walkText, style: AppTextStyles.midText(context)),
                         ],
                       ),
                     ),
@@ -117,17 +162,16 @@ class PetDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // GRÁFICO / ACTIVIDAD ---------------------------------------------
             Container(
               width: double.infinity,
-              height: screenHeight * 0.20,
+              height: screenH * .20,
               decoration: BoxDecoration(
                 color: AppColors.backgroundComponent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
                 child: Text(
-                  'Gráfico / actividad',
+                  'Gràfic / activitat',
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
@@ -135,26 +179,6 @@ class PetDetailsScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-//  WIDGET REUTILIZABLE PARA LOS MÓDULOS DE INFORMACIÓN (Alimentación, Paseos)
-// ---------------------------------------------------------------------------
-class _InfoCard extends StatelessWidget {
-  final Widget child;
-  const _InfoCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundComponent,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: child,
     );
   }
 }
