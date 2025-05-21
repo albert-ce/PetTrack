@@ -1,14 +1,29 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pet_track/components/app_bar.dart'; // ⬅️ nuevo
+import 'package:pet_track/components/app_bar.dart';
 import 'package:pet_track/components/info_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
+import 'package:pet_track/screens/pet_edit_screen.dart';
 
-class PetDetailsScreen extends StatelessWidget {
+class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
+
   const PetDetailsScreen({Key? key, required this.petData}) : super(key: key);
+
+  @override
+  State<PetDetailsScreen> createState() => _PetDetailsScreenState();
+}
+
+class _PetDetailsScreenState extends State<PetDetailsScreen> {
+  late Map<String, dynamic> pet; // copia mutable de la mascota
+
+  @override
+  void initState() {
+    super.initState();
+    pet = Map<String, dynamic>.from(widget.petData);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,18 +31,18 @@ class PetDetailsScreen extends StatelessWidget {
     final screenW = MediaQuery.of(context).size.width;
 
     // ────────── Dades bàsiques ──────────
-    final name = petData['name'] ?? 'Mascota';
-    final breed = petData['breed'] ?? 'Raça desconeguda';
+    final name = pet['name'] ?? 'Mascota';
+    final breed = pet['breed'] ?? 'Raça desconeguda';
 
     int? age;
-    final bd = petData['birthDate'];
+    final bd = pet['birthDate'];
     if (bd != null) {
       final d = bd is DateTime ? bd : (bd is Timestamp ? bd.toDate() : null);
       if (d != null) age = DateTime.now().year - d.year;
     }
     final ageStr = age != null ? (age == 1 ? '1 any' : '$age anys') : '';
 
-    final imgPath = petData['image'] as String?;
+    final imgPath = pet['image'] as String?;
     final ImageProvider imageProvider =
         (imgPath != null && imgPath.startsWith('/'))
             ? FileImage(File(imgPath))
@@ -35,37 +50,59 @@ class PetDetailsScreen extends StatelessWidget {
             ? NetworkImage(imgPath)
             : const AssetImage('assets/images/example.jpg');
 
-    // ────────── Menjars i passeigs ────────── A CANVIAR A BD PER IMPLEMENTAR BE
+    // ────────── Menjars i passeigs ────────── DESMUTEIG QUAN TINGUEM BE BD
     int? mealsDone;
-    final m = petData['meals'];
+    final m = pet['meals'];
     if (m is int) mealsDone = m;
     if (m is List) mealsDone = m.length;
-    final mealsGoal =
-        petData['mealsGoal'] ?? petData['mealsTarget'] ?? petData['feedTarget'];
-    final feedText =
-        (mealsDone != null && mealsGoal != null)
-            ? '$mealsDone / $mealsGoal menjades'
-            : (mealsDone != null
-                ? '$mealsDone menjades'
-                : 'Menjars no assignats');
 
-    int? walksDone;
-    final w = petData['walks'];
-    if (w is int) walksDone = w;
-    if (w is List) walksDone = w.length;
-    final walksGoal =
-        petData['walksGoal'] ?? petData['walksTarget'] ?? petData['walkTarget'];
-    final walkText =
-        (walksDone != null && walksGoal != null)
-            ? '$walksDone / $walksGoal'
-            : (walksDone != null
-                ? '$walksDone passeigs'
-                : 'Passeigs no registrats');
+    // final mealsGoal =
+    //     pet['mealsGoal'] ?? pet['mealsTarget'] ?? pet['feedTarget'];
+
+    final feedText = '$mealsDone menjars';
+    // (mealsDone != null && mealsGoal != null)
+    //     ? '$mealsDone / $mealsGoal menjades'
+    //     : (mealsDone != null
+    //         ? '$mealsDone menjades'
+    //         : 'Menjars no assignats');
+
+    // int? walksDone;
+    final w = pet['walks'];
+    // if (w is int) walksDone = w;
+    // if (w is List) walksDone = w.length;
+
+    // final walksGoal =
+    //     pet['walksGoal'] ?? pet['walksTarget'] ?? pet['walkTarget'];
+
+    final walkText = '$w passeigs';
+    // (walksDone != null && walksGoal != null)
+    //     ? '$walksDone / $walksGoal'
+    //     : (walksDone != null
+    //         ? '$walksDone passeigs'
+    //         : 'Passeigs no registrats');
 
     // ────────── UI ──────────
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBarWidget(height: screenH * 0.10),
+      appBar: AppBarWidget(
+        height: screenH * 0.10,
+        iconColor: AppColors.background,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () async {
+              final updatedPet = await Navigator.push<Map<String, dynamic>?>(
+                context,
+                MaterialPageRoute(builder: (_) => PetEditScreen(petData: pet)),
+              );
+
+              if (updatedPet != null && mounted) {
+                setState(() => pet = updatedPet);
+              }
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

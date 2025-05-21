@@ -6,11 +6,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final double height;
   final Color? iconColor;
+  final List<Widget>? actions;
 
   const AppBarWidget({
     super.key,
     required this.height,
     this.iconColor,
+    this.actions,
   });
 
   @override
@@ -31,6 +33,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
           Text("ck", style: AppTextStyles.logoText(context)),
         ],
       ),
+      actions: actions,
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: Container(

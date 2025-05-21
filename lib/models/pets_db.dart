@@ -2,78 +2,84 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
-/// Adds a new pet for the currently‑signed‑in user and returns the generated
-/// `petId`.
-///
-/// The pet document is stored at the path:
-/// `/users/{uid}/pets/{petId}`
-///
-/// Pass the pet's fields in [petData] (name, species, birthDate, ...). Optional
-/// [firestore] and [auth] params allow dependency injection in tests.
+final _uuid = const Uuid();
+
+FirebaseFirestore _fs([FirebaseFirestore? f]) =>
+    f ?? FirebaseFirestore.instance;
+FirebaseAuth _auth([FirebaseAuth? a]) => a ?? FirebaseAuth.instance;
+
+/// Colección `.../users/{uid}/pets`
+CollectionReference<Map<String, dynamic>> _petsCol(
+  FirebaseFirestore firestore,
+  String uid,
+) => firestore.collection('users').doc(uid).collection('pets');
+
 Future<String> addPet(
   Map<String, dynamic> petData, {
   FirebaseFirestore? firestore,
   FirebaseAuth? auth,
 }) async {
-  final _firestore = firestore ?? FirebaseFirestore.instance;
-  final _auth = auth ?? FirebaseAuth.instance;
+  final fs = _fs(firestore);
+  final user = _auth(auth).currentUser;
+  if (user == null) throw StateError('No authenticated user');
 
-  final user = _auth.currentUser;
-  if (user == null) {
-    throw StateError('No authenticated user');
-  }
-
-  // Generate a UUID v4 so we can reference the same ID from Cloud Functions.
-  const uuid = Uuid();
-  final petId = uuid.v4();
-
+  final petId = _uuid.v4();
   final now = FieldValue.serverTimestamp();
-  await _firestore
-      .collection('users')
-      .doc(user.uid)
-      .collection('pets')
-      .doc(petId)
-      .set(<String, dynamic>{
-        ...petData,
-        'petId': petId,
-        'createdAt': now,
-        'updatedAt': now,
-      });
+
+  await _petsCol(fs, user.uid).doc(petId).set({
+    ...petData,
+    'petId': petId,
+    'createdAt': now,
+    'updatedAt': now,
+  });
 
   return petId;
 }
 
+/// 🔄 **Nuevo**: actualizar un documento
+Future<void> updatePet(
+  String petId,
+  Map<String, dynamic> data, {
+  FirebaseFirestore? firestore,
+  FirebaseAuth? auth,
+}) async {
+  final fs = _fs(firestore);
+  final user = _auth(auth).currentUser;
+  if (user == null) throw StateError('No authenticated user');
+
+  await _petsCol(
+    fs,
+    user.uid,
+  ).doc(petId).update({...data, 'updatedAt': FieldValue.serverTimestamp()});
+}
+
+/// Lista completa ordenada por nombre
 Future<List<Map<String, dynamic>>> getPets({
   FirebaseFirestore? firestore,
   FirebaseAuth? auth,
 }) async {
-  final _firestore = firestore ?? FirebaseFirestore.instance;
-  final _auth = auth ?? FirebaseAuth.instance;
-  final user = _auth.currentUser;
-  if (user == null) {
-    throw StateError('No authenticated user');
-  }
+  final fs = _fs(firestore);
+  final user = _auth(auth).currentUser;
+  if (user == null) throw StateError('No authenticated user');
 
-  final snap =
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('pets')
-          .orderBy('name')
-          .get();
+  final snap = await _petsCol(fs, user.uid).orderBy('name').get();
 
   return snap.docs
       .map((d) => <String, dynamic>{'id': d.id, ...d.data()})
       .toList();
 }
 
-                        // try {
-                        //   final pets = await getPets(); // ⇦ invoca la función
-                        //   for (final pet in pets) {
-                        //     debugPrint(
-                        //       'Mascota: ${pet['name']} – id: ${pet['id']}',
-                        //     );
-                        //   }
-                        // } catch (e) {
-                        //   debugPrint('Error al leer mascotas: $e');
-                        // }
+/// 🔄 **Helper**: leer una sola mascota por id
+Future<Map<String, dynamic>> getPetById(
+  String petId, {
+  FirebaseFirestore? firestore,
+  FirebaseAuth? auth,
+}) async {
+  final fs = _fs(firestore);
+  final user = _auth(auth).currentUser;
+  if (user == null) throw StateError('No authenticated user');
+
+  final doc = await _petsCol(fs, user.uid).doc(petId).get();
+  if (!doc.exists) throw StateError('Pet not found');
+  return <String, dynamic>{'id': doc.id, ...doc.data()!};
+}
