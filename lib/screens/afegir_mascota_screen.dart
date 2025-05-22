@@ -36,7 +36,9 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
     );
     final base64Image = base64Encode(await imatge.readAsBytes());
     final prompt = '''
-Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap altre text ni puntuació (com punt final). Si no ho saps, respon exactament així: Raça desconeguda
+Ets un expert en animals. Identifica la raça exacta o més aproximada que puguis del gos o gat que apareix a la imatge. 
+Dona'm únicament el nom, sense cap altre text ni puntuació.
+Si no ho saps, respon exactament així: Raça desconeguda
 ''';
 
     final body = jsonEncode({
@@ -73,25 +75,71 @@ Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap a
 
   Future<void> _seleccionaImatge() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? imatgeSeleccionada = await picker.pickImage(
-      source: ImageSource.gallery,
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Fer foto'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? imatge = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (imatge != null) {
+                    setState(() {
+                      _imatge = imatge;
+                      _carregantRaca = true;
+                      _raca = null;
+                      _racaController.text = '';
+                    });
+                    final raca = await _obtenirRaca(File(_imatge!.path));
+                    if (mounted) {
+                      setState(() {
+                        _carregantRaca = false;
+                        _raca = raca;
+                        _racaController.text = raca;
+                      });
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Seleccionar de la galeria'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? imatge = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (imatge != null) {
+                    setState(() {
+                      _imatge = imatge;
+                      _carregantRaca = true;
+                      _raca = null;
+                      _racaController.text = '';
+                    });
+                    final raca = await _obtenirRaca(File(_imatge!.path));
+                    if (mounted) {
+                      setState(() {
+                        _carregantRaca = false;
+                        _raca = raca;
+                        _racaController.text = raca;
+                      });
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
     );
-    if (imatgeSeleccionada != null) {
-      setState(() {
-        _imatge = imatgeSeleccionada;
-        _carregantRaca = true;
-        _raca = null;
-        _racaController.text = '';
-      });
-      final raca = await _obtenirRaca(File(_imatge!.path));
-      if (mounted) {
-        setState(() {
-          _carregantRaca = false;
-          _raca = raca;
-          _racaController.text = raca;
-        });
-      }
-    }
   }
 
   Widget _botoCircular({
