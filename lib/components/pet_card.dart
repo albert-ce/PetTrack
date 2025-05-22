@@ -8,8 +8,8 @@ import 'dart:io';
 
 class PetCard extends StatefulWidget {
   final Map<String, dynamic> petData;
-
-  const PetCard({super.key, required this.petData});
+  final VoidCallback? onTap;
+  const PetCard({super.key, required this.petData, this.onTap});
 
   @override
   State<PetCard> createState() => _PetCardState();
@@ -87,7 +87,7 @@ class _PetCardState extends State<PetCard> {
               InkWell(
                 borderRadius: BorderRadius.circular(borderRadius),
                 splashColor: AppColors.accent.withAlpha(30),
-                onTap: () {},
+                onTap: widget.onTap,
                 child: Row(
                   children: [
                     SizedBox(

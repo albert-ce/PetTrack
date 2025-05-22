@@ -3,6 +3,7 @@ import 'package:pet_track/components/pet_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/screens/afegir_mascota_screen.dart';
+import 'package:pet_track/screens/pet_details_screen.dart';
 import 'package:pet_track/models/pets_db.dart';
 
 class PetListScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _PetListScreenState extends State<PetListScreen> {
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -54,7 +56,19 @@ class _PetListScreenState extends State<PetListScreen> {
                       style: AppTextStyles.titleText(context),
                     ),
                   ),
-                  ...pets.map((pet) => PetCard(petData: pet)),
+                  ...pets.map(
+                    (pet) => PetCard(
+                      petData: pet,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PetDetailsScreen(petData: pet),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             );
