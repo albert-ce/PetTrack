@@ -13,15 +13,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-class AfegirMascotaScreen extends StatefulWidget {
+class AddEditPetScreen extends StatefulWidget {
   final Map<String, dynamic>? petData; // null = afegir, !null = edició
-  const AfegirMascotaScreen({super.key, this.petData});
+  const AddEditPetScreen({super.key, this.petData});
 
   @override
-  State<AfegirMascotaScreen> createState() => _AfegirMascotaScreenState();
+  State<AddEditPetScreen> createState() => _AddEditPetScreenState();
 }
 
-class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
+class _AddEditPetScreenState extends State<AddEditPetScreen> {
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _dataNaixementController =
       TextEditingController();

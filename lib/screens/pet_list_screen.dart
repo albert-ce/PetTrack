@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pet_track/components/pet_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
-import 'package:pet_track/screens/afegir_mascota_screen.dart';
+import 'package:pet_track/screens/add_edit_pet_screen.dart';
 import 'package:pet_track/screens/pet_details_screen.dart';
 import 'package:pet_track/models/pets_db.dart';
 
@@ -98,7 +98,7 @@ class _PetListScreenState extends State<PetListScreen> {
           final result = await Navigator.push(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const AfegirMascotaScreen(),
+              pageBuilder: (_, __, ___) => const AddEditPetScreen(),
               transitionsBuilder: (_, animation, __, child) {
                 final offsetAnimation = Tween<Offset>(
                   begin: const Offset(0, 1),
