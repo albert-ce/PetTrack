@@ -28,7 +28,6 @@ class NavBar extends StatelessWidget {
           icon: Icon(Icons.calendar_month),
           label: 'Calendari',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inici'),
         BottomNavigationBarItem(icon: Icon(Icons.navigation), label: 'Rutes'),
         BottomNavigationBarItem(
           icon: Icon(Icons.account_circle),
