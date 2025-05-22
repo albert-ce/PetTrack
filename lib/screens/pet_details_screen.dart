@@ -34,13 +34,24 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     final name = pet['name'] ?? 'Mascota';
     final breed = pet['breed'] ?? 'Raça desconeguda';
     final species = pet['species'] ?? 'Espècie desconeguda';
-    int? age;
-    final bd = pet['birthDate'];
-    if (bd != null) {
-      final d = bd is DateTime ? bd : (bd is Timestamp ? bd.toDate() : null);
-      if (d != null) age = DateTime.now().year - d.year;
-    }
-    final ageStr = age != null ? (age == 1 ? '1 any' : '$age anys') : '';
+    final bd =
+        pet['birthDate'] is Timestamp
+            ? (pet['birthDate'] as Timestamp).toDate()
+            : null;
+    final ageText =
+        bd != null
+            ? () {
+              final now = DateTime.now();
+              final duration = now.difference(bd);
+              final days = duration.inDays;
+              final months = (days / 30).floor();
+              return days < 30
+                  ? '$days dies'
+                  : months < 12
+                  ? '$months mesos'
+                  : '${(months / 12).floor()} anys';
+            }()
+            : '';
 
     final imgPath = pet['image'] as String?;
     final ImageProvider imageProvider =
@@ -133,9 +144,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                       Text(name, style: AppTextStyles.bigText(context)),
                       const SizedBox(height: 5),
                       Text(breed, style: AppTextStyles.midText(context)),
-                      if (ageStr.isNotEmpty) ...[
+                      if (ageText.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(ageStr, style: AppTextStyles.tinyText(context)),
+                        Text(ageText, style: AppTextStyles.tinyText(context)),
                       ],
                     ],
                   ),

@@ -41,7 +41,6 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
   void initState() {
     super.initState();
 
-    // Prefill quan estem en mode edició
     if (_editant) {
       final p = widget.petData!;
       _nomController.text = p['name'] ?? '';
