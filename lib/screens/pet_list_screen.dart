@@ -42,7 +42,24 @@ class _PetListScreenState extends State<PetListScreen> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Encara no tens mascotes'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Encara no tens mascotes',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bigText(context),
+                  ),
+                  Text(
+                    'Prova d\'afegir-ne una prement "+"',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.midText(context),
+                  ),
+                ],
+              ),
+            );
           } else {
             final pets = snapshot.data!;
             return RefreshIndicator(

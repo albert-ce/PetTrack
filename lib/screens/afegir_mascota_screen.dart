@@ -24,7 +24,7 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   DateTime? _dataNaixement;
   String? _tipusAnimal = 'gos';
   String? _sexe = '?';
-  int _menjars = 4;
+  int _menjarsAlDia = 4;
   XFile? _imatge;
   String? _raca;
   bool _carregantRaca = false;
@@ -383,17 +383,18 @@ Si no ho saps, respon exactament així: Raça desconeguda
                         thumbColor: AppColors.primary,
                         activeColor: AppColors.primary,
                         inactiveColor: AppColors.backgroundComponent,
-                        value: _menjars.toDouble(),
+                        value: _menjarsAlDia.toDouble(),
                         min: 1,
                         max: 8,
                         divisions: 7,
-                        label: "$_menjars menjars",
+                        label: "$_menjarsAlDia menjars",
                         onChanged:
-                            (val) => setState(() => _menjars = val.toInt()),
+                            (val) =>
+                                setState(() => _menjarsAlDia = val.toInt()),
                       ),
                     ),
                     Text(
-                      '$_menjars menjars / dia',
+                      '$_menjarsAlDia menjars / dia',
                       style: AppTextStyles.tinyText(
                         context,
                       ).copyWith(fontWeight: FontWeight.w600),
@@ -416,7 +417,9 @@ Si no ho saps, respon exactament així: Raça desconeguda
                           'name': _nomController.text,
                           'species': _tipusAnimal,
                           'sex': _sexe,
-                          'meals': _menjars,
+                          'dailyFeedGoal': _menjarsAlDia,
+                          'dailyFeedCount': 0,
+                          'lastFeed': DateTime(2025, 1, 1, 00, 00),
                           'image': _imatge?.path,
                           'birthDate': Timestamp.fromDate(
                             _dataNaixement ?? DateTime.now(),
