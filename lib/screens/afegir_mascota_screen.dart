@@ -1,5 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,7 +14,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class AfegirMascotaScreen extends StatefulWidget {
-  const AfegirMascotaScreen({super.key});
+  final Map<String, dynamic>? petData; // null = afegir, !null = edició
+  const AfegirMascotaScreen({super.key, this.petData});
+
   @override
   State<AfegirMascotaScreen> createState() => _AfegirMascotaScreenState();
 }
@@ -21,6 +26,7 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   final TextEditingController _dataNaixementController =
       TextEditingController();
   final TextEditingController _racaController = TextEditingController();
+
   DateTime? _dataNaixement;
   String? _tipusAnimal = 'gos';
   String? _sexe = '?';
@@ -29,25 +35,58 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   String? _raca;
   bool _carregantRaca = false;
 
+  bool get _editant => widget.petData != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Prefill quan estem en mode edició
+    if (_editant) {
+      final p = widget.petData!;
+      _nomController.text = p['name'] ?? '';
+      _racaController.text = p['breed'] ?? '';
+
+      final bd = p['birthDate'];
+      _dataNaixement = bd is Timestamp ? bd.toDate() : (bd as DateTime?);
+      if (_dataNaixement != null) {
+        _dataNaixementController.text =
+            _dataNaixement!.toLocal().toString().split(' ')[0];
+      }
+      _tipusAnimal = p['species'] ?? _tipusAnimal;
+      _sexe = p['sex'] ?? _sexe;
+      _menjarsAlDia = p['dailyFeedGoal'] ?? _menjarsAlDia;
+      if (p['image'] != null &&
+          p['image'] is String &&
+          (p['image'] as String).isNotEmpty) {
+        final path = p['image'] as String;
+        if (File(path).existsSync()) {
+          _imatge = XFile(path);
+        }
+      }
+    }
+  }
+
   Future<String> _obtenirRaca(File imatge) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null) return 'Raça desconeguda';
+
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=$apiKey',
     );
     final base64Image = base64Encode(await imatge.readAsBytes());
-    final prompt = '''
-Ets un expert en animals. Identifica la raça exacta o més aproximada que puguis del gos o gat que apareix a la imatge. 
+    const prompt = '''
+Ets un expert en animals. Identifica la raça exacta o més aproximada que puguis del gos o gat que apareix a la imatge.
 Dona'm únicament el nom, sense cap altre text ni puntuació.
-Si no ho saps, respon exactament així: Raça desconeguda
-''';
+Si no ho saps, respon exactament així: Raça desconeguda''';
 
     final body = jsonEncode({
-      "contents": [
+      'contents': [
         {
-          "parts": [
-            {"text": prompt},
+          'parts': [
+            {'text': prompt},
             {
-              "inlineData": {"mimeType": "image/jpeg", "data": base64Image},
+              'inlineData': {'mimeType': 'image/jpeg', 'data': base64Image},
             },
           ],
         },
@@ -57,19 +96,15 @@ Si no ho saps, respon exactament així: Raça desconeguda
     try {
       final res = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: {'Content-Type': 'application/json'},
         body: body,
       );
-
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body);
-        final text = json["candidates"]?[0]?["content"]?["parts"]?[0]?["text"];
-        if (text != null && text.trim().isNotEmpty) {
-          return text.trim();
-        }
+        final text = json['candidates']?[0]?['content']?['parts']?[0]?['text'];
+        if (text != null && text.trim().isNotEmpty) return text.trim();
       }
     } catch (_) {}
-
     return 'Raça desconeguda';
   }
 
@@ -78,7 +113,7 @@ Si no ho saps, respon exactament així: Raça desconeguda
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder:
@@ -86,60 +121,68 @@ Si no ho saps, respon exactament així: Raça desconeguda
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Fer foto'),
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Fer foto'),
                 onTap: () async {
                   Navigator.pop(context);
                   final XFile? imatge = await picker.pickImage(
                     source: ImageSource.camera,
                   );
-                  if (imatge != null) {
-                    setState(() {
-                      _imatge = imatge;
-                      _carregantRaca = true;
-                      _raca = null;
-                      _racaController.text = '';
-                    });
-                    final raca = await _obtenirRaca(File(_imatge!.path));
-                    if (mounted) {
-                      setState(() {
-                        _carregantRaca = false;
-                        _raca = raca;
-                        _racaController.text = raca;
-                      });
-                    }
-                  }
+                  if (imatge != null) _processaImatge(imatge);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Seleccionar de la galeria'),
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Seleccionar de la galeria'),
                 onTap: () async {
                   Navigator.pop(context);
                   final XFile? imatge = await picker.pickImage(
                     source: ImageSource.gallery,
                   );
-                  if (imatge != null) {
-                    setState(() {
-                      _imatge = imatge;
-                      _carregantRaca = true;
-                      _raca = null;
-                      _racaController.text = '';
-                    });
-                    final raca = await _obtenirRaca(File(_imatge!.path));
-                    if (mounted) {
-                      setState(() {
-                        _carregantRaca = false;
-                        _raca = raca;
-                        _racaController.text = raca;
-                      });
-                    }
-                  }
+                  if (imatge != null) _processaImatge(imatge);
                 },
               ),
             ],
           ),
     );
+  }
+
+  Future<void> _processaImatge(XFile imatge) async {
+    setState(() {
+      _imatge = imatge;
+      _carregantRaca = true;
+      _raca = null;
+      _racaController.text = '';
+    });
+    final raca = await _obtenirRaca(File(imatge.path));
+    if (!mounted) return;
+    setState(() {
+      _carregantRaca = false;
+      _raca = raca;
+      _racaController.text = raca;
+    });
+  }
+
+  Future<void> _desaMascota() async {
+    final dades = <String, dynamic>{
+      'name': _nomController.text.trim(),
+      'breed': _raca ?? _racaController.text.trim(),
+      'birthDate':
+          _dataNaixement == null ? null : Timestamp.fromDate(_dataNaixement!),
+      'species': _tipusAnimal,
+      'sex': _sexe,
+      'dailyFeedGoal': _menjarsAlDia,
+      'image': _imatge?.path,
+    }..removeWhere((_, v) => v == null || (v is String && v.isEmpty));
+
+    if (_editant) {
+      final id = widget.petData!['id'] as String;
+      await updatePet(id, dades);
+      if (mounted) Navigator.pop(context, {...widget.petData!, ...dades});
+    } else {
+      await addPet({...dades, 'dailyFeedCount': 0, 'lastFeed': DateTime.now()});
+      if (mounted) Navigator.pop(context, true);
+    }
   }
 
   Widget _botoCircular({
@@ -168,12 +211,14 @@ Si no ho saps, respon exactament així: Raça desconeguda
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
+
     final inputDecorationTheme = theme.inputDecorationTheme.copyWith(
-      labelStyle: TextStyle(color: AppColors.primary),
-      focusedBorder: UnderlineInputBorder(
+      labelStyle: const TextStyle(color: AppColors.primary),
+      focusedBorder: const UnderlineInputBorder(
         borderSide: BorderSide(color: AppColors.primary),
       ),
     );
+
     return Theme(
       data: theme.copyWith(
         inputDecorationTheme: inputDecorationTheme,
@@ -188,14 +233,14 @@ Si no ho saps, respon exactament així: Raça desconeguda
         appBar: AppBar(
           backgroundColor: AppColors.background,
           title: Text(
-            'Afegir mascota',
+            _editant ? 'Editar mascota' : 'Afegir mascota',
             style: AppTextStyles.titleText(context),
           ),
         ),
         body: SingleChildScrollView(
           padding: EdgeInsets.all(screenHeight * 0.008),
           child: Padding(
-            padding: const EdgeInsets.only(right: 16, left: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -217,14 +262,8 @@ Si no ho saps, respon exactament així: Raça desconeguda
                         children: [
                           ShaderMask(
                             shaderCallback:
-                                (bounds) => AppColors.gradient.createShader(
-                                  Rect.fromLTWH(
-                                    0,
-                                    0,
-                                    bounds.width,
-                                    bounds.height,
-                                  ),
-                                ),
+                                (bounds) =>
+                                    AppColors.gradient.createShader(bounds),
                             child: Icon(
                               _imatge == null
                                   ? Icons.add_a_photo
@@ -236,14 +275,8 @@ Si no ho saps, respon exactament així: Raça desconeguda
                           SizedBox(width: screenHeight * 0.01),
                           ShaderMask(
                             shaderCallback:
-                                (bounds) => AppColors.gradient.createShader(
-                                  Rect.fromLTWH(
-                                    0,
-                                    0,
-                                    bounds.width,
-                                    bounds.height,
-                                  ),
-                                ),
+                                (bounds) =>
+                                    AppColors.gradient.createShader(bounds),
                             child: Text(
                               _imatge == null
                                   ? 'Afegir imatge'
@@ -262,25 +295,24 @@ Si no ho saps, respon exactament així: Raça desconeguda
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.0125),
-                if (_carregantRaca)
+                if (_carregantRaca) ...[
                   Row(
                     children: [
-                      Icon(Icons.auto_awesome, color: AppColors.primary),
-                      SizedBox(width: 8),
-                      Text('Detectant raça amb IA...'),
-                      SizedBox(width: 8),
-                      SizedBox(
+                      const Icon(Icons.auto_awesome, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('Detectant raça amb IA...'),
+                      const SizedBox(width: 8),
+                      const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ],
-                  )
-                else if (_raca != null)
+                  ),
+                ] else if (_raca != null) ...[
                   TextField(
                     controller: _racaController,
-                    style: TextStyle(fontSize: screenHeight * 0.02),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Raça detectada',
                       suffixIcon: Icon(
                         Icons.auto_awesome,
@@ -288,18 +320,18 @@ Si no ho saps, respon exactament així: Raça desconeguda
                       ),
                     ),
                   ),
-                SizedBox(height: screenHeight * 0.0125),
+                  SizedBox(height: screenHeight * 0.0125),
+                ],
                 TextField(
                   controller: _nomController,
-                  style: TextStyle(fontSize: screenHeight * 0.02),
-                  decoration: InputDecoration(labelText: 'Nom'),
+                  decoration: const InputDecoration(labelText: 'Nom'),
                 ),
                 SizedBox(height: screenHeight * 0.008),
                 GestureDetector(
                   onTap: () async {
-                    DateTime? picked = await showDatePicker(
+                    final picked = await showDatePicker(
                       context: context,
-                      initialDate: DateTime.now(),
+                      initialDate: _dataNaixement ?? DateTime.now(),
                       firstDate: DateTime(2000),
                       lastDate: DateTime.now(),
                     );
@@ -314,8 +346,7 @@ Si no ho saps, respon exactament així: Raça desconeguda
                   child: AbsorbPointer(
                     child: TextField(
                       controller: _dataNaixementController,
-                      style: TextStyle(fontSize: screenHeight * 0.02),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Data de naixement',
                       ),
                     ),
@@ -387,7 +418,7 @@ Si no ho saps, respon exactament així: Raça desconeguda
                         min: 1,
                         max: 8,
                         divisions: 7,
-                        label: "$_menjarsAlDia menjars",
+                        label: '$_menjarsAlDia menjars',
                         onChanged:
                             (val) =>
                                 setState(() => _menjarsAlDia = val.toInt()),
@@ -411,29 +442,14 @@ Si no ho saps, respon exactament així: Raça desconeguda
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(screenHeight * 0.015),
-                      onTap: () async {
-                        Navigator.pop(context, true);
-                        await addPet({
-                          'name': _nomController.text,
-                          'species': _tipusAnimal,
-                          'sex': _sexe,
-                          'dailyFeedGoal': _menjarsAlDia,
-                          'dailyFeedCount': 0,
-                          'lastFeed': DateTime(2025, 1, 1, 00, 00),
-                          'image': _imatge?.path,
-                          'birthDate': Timestamp.fromDate(
-                            _dataNaixement ?? DateTime.now(),
-                          ),
-                          'breed': _raca ?? '',
-                        });
-                      },
+                      onTap: _desaMascota,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           vertical: screenHeight * 0.02,
                         ),
                         child: Center(
                           child: Text(
-                            'Afegir mascota',
+                            _editant ? 'Guardar' : 'Afegir mascota',
                             style: AppTextStyles.bigText(context).copyWith(
                               color: Colors.white,
                               fontSize: screenHeight * 0.03,

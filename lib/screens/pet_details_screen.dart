@@ -5,7 +5,7 @@ import 'package:pet_track/components/app_bar.dart';
 import 'package:pet_track/components/info_card.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
-import 'package:pet_track/screens/pet_edit_screen.dart';
+import 'package:pet_track/screens/afegir_mascota_screen.dart';
 
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
@@ -94,7 +94,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             onPressed: () async {
               final updatedPet = await Navigator.push<Map<String, dynamic>?>(
                 context,
-                MaterialPageRoute(builder: (_) => PetEditScreen(petData: pet)),
+                MaterialPageRoute(
+                  builder: (_) => AfegirMascotaScreen(petData: pet),
+                ),
               );
 
               if (updatedPet != null && mounted) {
