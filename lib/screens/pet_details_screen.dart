@@ -33,7 +33,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     // ────────── Dades bàsiques ──────────
     final name = pet['name'] ?? 'Mascota';
     final breed = pet['breed'] ?? 'Raça desconeguda';
-
+    final species = pet['species'] ?? 'Espècie desconeguda';
     int? age;
     final bd = pet['birthDate'];
     if (bd != null) {
@@ -48,7 +48,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             ? FileImage(File(imgPath))
             : (imgPath != null && imgPath.startsWith('http'))
             ? NetworkImage(imgPath)
-            : const AssetImage('assets/images/example.jpg');
+            : (imgPath == null && species == 'gos')
+            ? const AssetImage('assets/images/gos.png')
+            : const AssetImage('assets/images/gat.png');
 
     // ────────── Menjars i passeigs ────────── DESMUTEIG QUAN TINGUEM BE BD
     int? mealsDone;
