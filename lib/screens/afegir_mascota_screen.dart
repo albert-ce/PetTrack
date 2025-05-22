@@ -24,7 +24,7 @@ class _AfegirMascotaScreenState extends State<AfegirMascotaScreen> {
   DateTime? _dataNaixement;
   String? _tipusAnimal = 'gos';
   String? _sexe = '?';
-  int _menjars = 4;
+  int _menjarsAlDia = 4;
   XFile? _imatge;
   String? _raca;
   bool _carregantRaca = false;
@@ -73,25 +73,71 @@ Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap a
 
   Future<void> _seleccionaImatge() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? imatgeSeleccionada = await picker.pickImage(
-      source: ImageSource.gallery,
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Fer foto'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? imatge = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (imatge != null) {
+                    setState(() {
+                      _imatge = imatge;
+                      _carregantRaca = true;
+                      _raca = null;
+                      _racaController.text = '';
+                    });
+                    final raca = await _obtenirRaca(File(_imatge!.path));
+                    if (mounted) {
+                      setState(() {
+                        _carregantRaca = false;
+                        _raca = raca;
+                        _racaController.text = raca;
+                      });
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Seleccionar de la galeria'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? imatge = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (imatge != null) {
+                    setState(() {
+                      _imatge = imatge;
+                      _carregantRaca = true;
+                      _raca = null;
+                      _racaController.text = '';
+                    });
+                    final raca = await _obtenirRaca(File(_imatge!.path));
+                    if (mounted) {
+                      setState(() {
+                        _carregantRaca = false;
+                        _raca = raca;
+                        _racaController.text = raca;
+                      });
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
     );
-    if (imatgeSeleccionada != null) {
-      setState(() {
-        _imatge = imatgeSeleccionada;
-        _carregantRaca = true;
-        _raca = null;
-        _racaController.text = '';
-      });
-      final raca = await _obtenirRaca(File(_imatge!.path));
-      if (mounted) {
-        setState(() {
-          _carregantRaca = false;
-          _raca = raca;
-          _racaController.text = raca;
-        });
-      }
-    }
   }
 
   Widget _botoCircular({
@@ -335,17 +381,18 @@ Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap a
                         thumbColor: AppColors.primary,
                         activeColor: AppColors.primary,
                         inactiveColor: AppColors.backgroundComponent,
-                        value: _menjars.toDouble(),
+                        value: _menjarsAlDia.toDouble(),
                         min: 1,
                         max: 8,
                         divisions: 7,
-                        label: "$_menjars menjars",
+                        label: "$_menjarsAlDia menjars",
                         onChanged:
-                            (val) => setState(() => _menjars = val.toInt()),
+                            (val) =>
+                                setState(() => _menjarsAlDia = val.toInt()),
                       ),
                     ),
                     Text(
-                      '$_menjars menjars / dia',
+                      '$_menjarsAlDia menjars / dia',
                       style: AppTextStyles.tinyText(
                         context,
                       ).copyWith(fontWeight: FontWeight.w600),
@@ -368,7 +415,9 @@ Digues només la raça d'aquest gos o gat. Dona'm únicament el nom, sense cap a
                           'name': _nomController.text,
                           'species': _tipusAnimal,
                           'sex': _sexe,
-                          'meals': _menjars,
+                          'dailyFeedGoal': _menjarsAlDia,
+                          'dailyFeedCount': 0,
+                          'lastFeed': DateTime(2025, 1, 1, 00, 00),
                           'image': _imatge?.path,
                           'birthDate': Timestamp.fromDate(
                             _dataNaixement ?? DateTime.now(),

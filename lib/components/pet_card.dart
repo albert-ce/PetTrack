@@ -5,6 +5,7 @@ import 'package:pet_track/core/app_styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
+import 'dart:math';
 
 class PetCard extends StatefulWidget {
   final Map<String, dynamic> petData;
@@ -22,7 +23,6 @@ class _PetCardState extends State<PetCard> {
     final name = pet['name'] ?? 'Sense nom';
     final species = pet['species'] ?? 'Espècie desconeguda';
     final breed = pet['breed'] ?? 'Raça desconeguda';
-    final int feedDurationMinutes = ((24 / pet["meals"]) * 60).toInt();
     final birthDate =
         pet['birthDate'] is Timestamp
             ? (pet['birthDate'] as Timestamp).toDate()
@@ -45,7 +45,9 @@ class _PetCardState extends State<PetCard> {
     final lastFed =
         pet['lastFed'] is Timestamp
             ? (pet['lastFed'] as Timestamp).toDate()
-            : DateTime.now();
+            : DateTime(2025, 1, 1, 00, 00);
+    final dailyFeedGoal = pet['dailyFeedGoal'];
+    final dailyFeedCount = pet['dailyFeedCount'];
     final sex = pet['sex'] ?? '?';
     final String? imagePath = pet['image'];
     final imageProvider =
@@ -61,14 +63,18 @@ class _PetCardState extends State<PetCard> {
           .doc(user!.uid)
           .collection('pets')
           .doc(petId)
-          .update({'lastFed': DateTime.now()});
+          .update({
+            'dailyFeedCount': min(dailyFeedCount + 1, dailyFeedGoal),
+            'lastFed': DateTime.now(),
+          });
     }
 
     final double screenHeight = MediaQuery.of(context).size.height;
-    final double cardHeight = screenHeight * 0.22;
+    final double cardHeight = screenHeight * 0.24;
     final double borderRadius = 20.0;
     final double horizontalPadding = 16.0;
-    final double verticalPadding = 16.0;
+    final double topPadding = 16.0;
+    final double bottomPadding = 4.0;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -119,9 +125,11 @@ class _PetCardState extends State<PetCard> {
                     ),
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                          vertical: verticalPadding,
+                        padding: EdgeInsets.only(
+                          left: horizontalPadding,
+                          right: horizontalPadding,
+                          top: topPadding,
+                          bottom: bottomPadding,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,21 +140,20 @@ class _PetCardState extends State<PetCard> {
                               '${sex.isNotEmpty ? sex[0].toUpperCase() : ''}   $ageText',
                               style: AppTextStyles.midText(context),
                             ),
+                            Spacer(),
+                            FeedButton(
+                              size: cardHeight * 0.335,
+                              lastFed: lastFed,
+                              onFeed: updateLastFed,
+                              dailyFeedCount: dailyFeedCount,
+                              dailyFeedGoal: dailyFeedGoal,
+                            ),
+                            Spacer(),
                           ],
                         ),
                       ),
                     ),
                   ],
-                ),
-              ),
-              Positioned(
-                right: horizontalPadding,
-                top: verticalPadding,
-                child: FeedButton(
-                  size: cardHeight * 0.34,
-                  feedInterval: Duration(minutes: feedDurationMinutes),
-                  lastFed: lastFed,
-                  onFeed: updateLastFed,
                 ),
               ),
             ],

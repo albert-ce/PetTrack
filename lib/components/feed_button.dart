@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,14 +5,16 @@ import 'package:pet_track/core/app_colors.dart';
 
 class FeedButton extends StatefulWidget {
   final double size;
-  final Duration feedInterval;
+  final int dailyFeedCount;
+  final int dailyFeedGoal;
   final DateTime lastFed;
   final VoidCallback onFeed;
 
   const FeedButton({
     super.key,
     required this.size,
-    required this.feedInterval,
+    required this.dailyFeedCount,
+    required this.dailyFeedGoal,
     required this.lastFed,
     required this.onFeed,
   });
@@ -23,68 +24,51 @@ class FeedButton extends StatefulWidget {
 }
 
 class _FeedButtonState extends State<FeedButton> {
-  late Timer _timer;
+  late int _count;
   late DateTime _lastFed;
-  double _progress = 2.0;
 
   @override
   void initState() {
     super.initState();
+    _count = widget.dailyFeedCount;
     _lastFed = widget.lastFed;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final p =
-          1 -
-          DateTime.now().difference(_lastFed).inSeconds /
-              widget.feedInterval.inSeconds;
-      setState(() => _progress = p.clamp(0.0, 1.0));
-    });
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
+  void _handleFeed() {
+    if (_count < widget.dailyFeedGoal) {
+      setState(() {
+        _count++;
+        _lastFed = DateTime.now();
+      });
+      widget.onFeed();
+    }
   }
 
-  void _feed() {
-    setState(() {
-      _lastFed = DateTime.now();
-      _progress = 1.0;
-    });
-    widget.onFeed();
-  }
+  bool get _isBowlEmpty => DateTime.now().difference(_lastFed).inMinutes >= 10;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _feed,
+      onTap: _handleFeed,
       child: SizedBox(
         width: widget.size,
         height: widget.size,
         child: Stack(
-          clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
             CustomPaint(
               size: Size(widget.size, widget.size),
-              painter: _CircleProgressPainter(progress: _progress),
+              painter: _CircleProgressPainter(
+                filledSegments: _count,
+                segments: widget.dailyFeedGoal,
+              ),
             ),
             SvgPicture.asset(
-              _progress > 0
+              !_isBowlEmpty || _count == widget.dailyFeedGoal
                   ? 'assets/images/full_bowl.svg'
                   : 'assets/images/empty_bowl.svg',
               width: widget.size * 0.5,
             ),
-            if (_progress == 0)
-              Positioned(
-                top: -widget.size * 0.05,
-                right: -widget.size * 0.05,
-                child: Icon(
-                  Icons.warning_rounded,
-                  color: Colors.red,
-                  size: widget.size * 0.4,
-                ),
-              ),
           ],
         ),
       ),
@@ -93,42 +77,52 @@ class _FeedButtonState extends State<FeedButton> {
 }
 
 class _CircleProgressPainter extends CustomPainter {
-  final double progress;
+  final int filledSegments;
+  final int segments;
 
-  _CircleProgressPainter({required this.progress});
-
-  Color _getColor(double p) {
-    if (p > 1.0) return AppColors.accent;
-    if (p > 0.4) return Colors.green;
-    if (p > 0.2) return Colors.orange;
-    return Colors.red;
-  }
+  _CircleProgressPainter({
+    required this.filledSegments,
+    required this.segments,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2 - 4;
-    final bg =
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+
+    final bgPaint =
         Paint()
           ..color = Colors.black.withAlpha((255 * 0.1).toInt())
           ..style = PaintingStyle.stroke
           ..strokeWidth = 4;
-    final fg =
+
+    final fgPaint =
         Paint()
-          ..color = _getColor(progress)
+          ..color = AppColors.accent
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 4;
-    canvas.drawCircle(c, r, bg);
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: r),
-      -pi / 2,
-      -2 * pi * progress,
-      false,
-      fg,
-    );
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.butt;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    if (segments <= 0) return;
+
+    final gapAngle = 2 * pi * 0.015;
+    final segmentAngle = (2 * pi / segments) - gapAngle;
+
+    for (int i = 0; i < segments; i++) {
+      final startAngle = (2 * pi * i / segments) - pi / 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        segmentAngle,
+        false,
+        i < filledSegments ? fgPaint : bgPaint,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _CircleProgressPainter old) =>
-      old.progress != progress;
+      old.filledSegments != filledSegments || old.segments != segments;
 }
