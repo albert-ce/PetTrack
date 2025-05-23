@@ -38,18 +38,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final AuthClient? client = await _authService.getAuthenticatedClient();
     if (client != null) {
       _calendarService = CalendarService(client);
-      _petTrackCalendarId = await _calendarService!.ensurePetTrackCalendarExists();
+      _petTrackCalendarId =
+          await _calendarService!.ensurePetTrackCalendarExists();
       if (_petTrackCalendarId != null) {
         _getEventsForSelectedDay(_selectedDay!);
       } else {
         setState(() {
-          _isLoadingEvents = false; // Detener la carga si el calendario no se pudo obtener/crear
+          _isLoadingEvents =
+              false; // Detener la carga si el calendario no se pudo obtener/crear
         });
         print('No se pudo obtener o crear el calendario PetTrack.');
       }
     } else {
       setState(() {
-        _isLoadingEvents = false; // Detener la carga si el cliente de autenticación es nulo
+        _isLoadingEvents =
+            false; // Detener la carga si el cliente de autenticación es nulo
       });
       print('No se pudo obtener el cliente autenticado.');
     }
@@ -71,8 +74,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     try {
       // Obtener el inicio y fin del día seleccionado
-      final DateTime startOfDay = DateTime(day.year, day.month, day.day, 0, 0, 0);
-      final DateTime endOfDay = DateTime(day.year, day.month, day.day, 23, 59, 59);
+      final DateTime startOfDay = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        0,
+        0,
+        0,
+      );
+      final DateTime endOfDay = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        23,
+        59,
+        59,
+      );
 
       final events = await _calendarService!.getEvents(
         _petTrackCalendarId!,
@@ -92,6 +109,82 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // Nuevo método para añadir un evento de prueba
+  Future<void> _addTestEvent() async {
+    if (_calendarService == null ||
+        _petTrackCalendarId == null ||
+        _selectedDay == null) {
+      // Mostrar un mensaje al usuario si el servicio no está listo o no hay día seleccionado
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: Servicio de calendario no disponible o día no seleccionado.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Crear un evento de prueba
+    final DateTime eventStart = DateTime(
+      _selectedDay!.year,
+      _selectedDay!.month,
+      _selectedDay!.day,
+      10, // Hora de inicio: 10:00 AM
+      0,
+    );
+    final DateTime eventEnd = eventStart.add(
+      Duration(hours: 1),
+    ); // Duración: 1 hora
+
+    final gcal.Event newEvent = gcal.Event(
+      summary: 'Evento de Prueba PetTrack',
+      description: 'Este es un evento de prueba añadido desde la app.',
+      start: gcal.EventDateTime(
+        dateTime: eventStart.toUtc(),
+      ), // Importante: a UTC
+      end: gcal.EventDateTime(dateTime: eventEnd.toUtc()), // Importante: a UTC
+      location: 'Mi ubicación',
+    );
+
+    try {
+      final createdEvent = await _calendarService!.createEvent(
+        _petTrackCalendarId!,
+        newEvent,
+      );
+
+      if (createdEvent != null) {
+        print('Evento creado con éxito: ${createdEvent.summary}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Evento "${createdEvent.summary}" añadido con éxito.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Refrescar la lista de eventos para el día seleccionado
+        _getEventsForSelectedDay(_selectedDay!);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al añadir el evento.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al crear el evento: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al añadir el evento: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -107,9 +200,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _calendarFormat == CalendarFormat.month
-                        ? AppColors.primary
-                        : AppColors.backgroundComponentHover,
+                    backgroundColor:
+                        _calendarFormat == CalendarFormat.month
+                            ? AppColors.primary
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
@@ -128,9 +222,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _calendarFormat == CalendarFormat.week
-                        ? AppColors.primary
-                        : AppColors.backgroundComponentHover,
+                    backgroundColor:
+                        _calendarFormat == CalendarFormat.week
+                            ? AppColors.primary
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
@@ -158,7 +253,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              _getEventsForSelectedDay(selectedDay); // Carga eventos para el nuevo día seleccionado
+              _getEventsForSelectedDay(
+                selectedDay,
+              ); // Carga eventos para el nuevo día seleccionado
             },
             headerStyle: HeaderStyle(
               titleCentered: true,
@@ -189,96 +286,108 @@ class _CalendarScreenState extends State<CalendarScreen> {
           // --- Sección de eventos ---
           const Divider(),
           Expanded(
-            child: _isLoadingEvents
-                ? Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  )
-                : _selectedEvents.isEmpty
+            child:
+                _isLoadingEvents
                     ? Center(
-                        child: Text(
-                          'No hi ha res agendat per aquest dia.',
-                          style: AppTextStyles.midText(context)
-                              .copyWith(color: AppColors.black),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
                         ),
-                      )
+                      ),
+                    )
+                    : _selectedEvents.isEmpty
+                    ? Center(
+                      child: Text(
+                        'No hi ha res agendat per aquest dia.',
+                        style: AppTextStyles.midText(
+                          context,
+                        ).copyWith(color: AppColors.black),
+                      ),
+                    )
                     : ListView.builder(
-                        itemCount: _selectedEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = _selectedEvents[index];
-                          // Asegúrate de manejar los eventos que podrían no tener start o end
-                          final eventStartTime = event.start?.dateTime ?? event.start?.date;
-                          final eventEndTime = event.end?.dateTime ?? event.end?.date;
+                      itemCount: _selectedEvents.length,
+                      itemBuilder: (context, index) {
+                        final event = _selectedEvents[index];
+                        // Asegúrate de manejar los eventos que podrían no tener start o end
+                        final eventStartTime =
+                            event.start?.dateTime ?? event.start?.date;
+                        final eventEndTime =
+                            event.end?.dateTime ?? event.end?.date;
 
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            color: AppColors.backgroundComponent,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event.summary ?? 'Sin título',
-                                    style: AppTextStyles.bigText(context).copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          color: AppColors.backgroundComponent,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event.summary ?? 'Sin título',
+                                  style: AppTextStyles.midText(
+                                    context,
+                                  ).copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (event.description != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      event.description!,
+                                      style: AppTextStyles.midText(
+                                        context,
+                                      ).copyWith(
+                                        color: AppColors.black,
+                                      ),
                                     ),
                                   ),
-                                  if (event.description != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        event.description!,
-                                        style: AppTextStyles.midText(context).copyWith(
-                                          color: AppColors.black,
-                                        ),
-                                      ),
+                                if (eventStartTime != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Inici: ${eventStartTime.toLocal().toString().substring(0, 16)}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
                                     ),
-                                  if (eventStartTime != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Inici: ${eventStartTime.toLocal().toString().substring(0, 16)}',
-                                        style: AppTextStyles.tinyText(context).copyWith(
-                                          color: AppColors.black,
-                                        ),
-                                      ),
+                                  ),
+                                if (eventEndTime != null &&
+                                    eventStartTime != eventEndTime)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Fi: ${eventEndTime.toLocal().toString().substring(0, 16)}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
                                     ),
-                                  if (eventEndTime != null && eventStartTime != eventEndTime)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Fi: ${eventEndTime.toLocal().toString().substring(0, 16)}',
-                                        style: AppTextStyles.tinyText(context).copyWith(
-                                          color: AppColors.black,
-                                        ),
-                                      ),
+                                  ),
+                                if (event.location != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Lloc: ${event.location!}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
                                     ),
-                                  if (event.location != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Lloc: ${event.location!}',
-                                        style: AppTextStyles.tinyText(context).copyWith(
-                                          color: AppColors.black,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
+                                  ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          print('Añadir nuevo evento para el día: $_selectedDay');
-        },
+        onPressed: _addTestEvent, // Llama al nuevo método para añadir un evento
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Ink(
