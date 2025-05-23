@@ -186,8 +186,29 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
 
     String? urlImatge = _imageUrl;
     if (_imatge != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              content: Row(
+                children: [
+                  const CircularProgressIndicator(color: AppColors.accent),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Text(
+                      'Pujant la imatge al núvol...',
+                      style: AppTextStyles.midText(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      );
       urlImatge = await _pujaImatgeFirebase(File(_imatge!.path), petId);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
     }
+
     final dades = {...dadesBase, 'imageUrl': urlImatge};
 
     final col = FirebaseFirestore.instance
