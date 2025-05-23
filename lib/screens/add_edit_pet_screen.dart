@@ -468,7 +468,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                     borderRadius: BorderRadius.circular(screenHeight * 0.015),
                     child: Ink(
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        gradient: AppColors.gradient,
                         borderRadius: BorderRadius.circular(
                           screenHeight * 0.015,
                         ),
@@ -477,14 +477,14 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                         borderRadius: BorderRadius.circular(
                           screenHeight * 0.015,
                         ),
-                        onTap: _confirmaElimina,
+                        onTap: _desaMascota,
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             vertical: screenHeight * 0.02,
                           ),
                           child: Center(
                             child: Text(
-                              'Eliminar mascota',
+                              _editant ? 'Guardar' : 'Afegir mascota',
                               style: AppTextStyles.bigText(context).copyWith(
                                 color: Colors.white,
                                 fontSize: screenHeight * 0.03,
@@ -495,25 +495,26 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                       ),
                     ),
                   ),
+
                   SizedBox(height: screenHeight * 0.02),
                 ],
                 Material(
                   borderRadius: BorderRadius.circular(screenHeight * 0.015),
                   child: Ink(
                     decoration: BoxDecoration(
-                      gradient: AppColors.gradient,
+                      color: Colors.red,
                       borderRadius: BorderRadius.circular(screenHeight * 0.015),
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(screenHeight * 0.015),
-                      onTap: _desaMascota,
+                      onTap: _confirmaElimina,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           vertical: screenHeight * 0.02,
                         ),
                         child: Center(
                           child: Text(
-                            _editant ? 'Guardar' : 'Afegir mascota',
+                            'Eliminar mascota',
                             style: AppTextStyles.bigText(context).copyWith(
                               color: Colors.white,
                               fontSize: screenHeight * 0.03,
