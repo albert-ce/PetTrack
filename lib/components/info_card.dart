@@ -3,7 +3,7 @@ import 'package:pet_track/core/app_colors.dart';
 
 class InfoCard extends StatelessWidget {
   final Widget child;
-  const InfoCard({required this.child});
+  const InfoCard({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) => Container(

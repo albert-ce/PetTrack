@@ -4,7 +4,6 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
 import 'dart:math';
 
 class PetCard extends StatefulWidget {
@@ -31,8 +30,7 @@ class _PetCardState extends State<PetCard> {
         birthDate != null
             ? () {
               final now = DateTime.now();
-              final duration = now.difference(birthDate);
-              final days = duration.inDays;
+              final days = now.difference(birthDate).inDays;
               final months = (days / 30).floor();
               return days < 30
                   ? '$days dies'
@@ -45,36 +43,41 @@ class _PetCardState extends State<PetCard> {
     final lastFed =
         pet['lastFed'] is Timestamp
             ? (pet['lastFed'] as Timestamp).toDate()
-            : DateTime(2025, 1, 1, 00, 00);
+            : DateTime(2025, 1, 1);
     final dailyFeedGoal = pet['dailyFeedGoal'];
-    final dailyFeedCount = pet['dailyFeedCount'];
+    var dailyFeedCount = pet['dailyFeedCount'];
     final sex = pet['sex'] ?? '?';
-    final String? imagePath = pet['image'];
-    final imageProvider =
-        (imagePath != null && imagePath.startsWith('/'))
-            ? FileImage(File(imagePath))
-            : AssetImage('assets/images/$species.png') as ImageProvider;
+    final String? imageUrl = pet['imageUrl'];
+    final ImageProvider imageProvider =
+        imageUrl != null && imageUrl.isNotEmpty
+            ? NetworkImage(imageUrl)
+            : AssetImage('assets/images/$species.png');
 
-    void updateLastFed() {
-      final _auth = FirebaseAuth.instance;
-      final user = _auth.currentUser;
+    void updateLastFed(bool add) {
+      dailyFeedCount =
+          add
+              ? min(dailyFeedCount + 1, dailyFeedGoal)
+              : max(dailyFeedCount - 1, 0);
+
+      final user = FirebaseAuth.instance.currentUser;
+
+      final updateData = {'dailyFeedCount': dailyFeedCount};
+      if (add) updateData['lastFed'] = DateTime.now();
+
       FirebaseFirestore.instance
           .collection('users')
           .doc(user!.uid)
           .collection('pets')
           .doc(petId)
-          .update({
-            'dailyFeedCount': min(dailyFeedCount + 1, dailyFeedGoal),
-            'lastFed': DateTime.now(),
-          });
+          .update(updateData);
     }
 
     final double screenHeight = MediaQuery.of(context).size.height;
     final double cardHeight = screenHeight * 0.24;
-    final double borderRadius = 20.0;
-    final double horizontalPadding = 16.0;
-    final double topPadding = 16.0;
-    final double bottomPadding = 4.0;
+    const double borderRadius = 20.0;
+    const double horizontalPadding = 16.0;
+    const double topPadding = 16.0;
+    const double bottomPadding = 4.0;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -99,7 +102,7 @@ class _PetCardState extends State<PetCard> {
                     SizedBox(
                       width: cardHeight,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.only(
+                        borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(borderRadius),
                           bottomLeft: Radius.circular(borderRadius),
                         ),
@@ -108,7 +111,7 @@ class _PetCardState extends State<PetCard> {
                           children: [
                             Ink.image(image: imageProvider, fit: BoxFit.cover),
                             Ink(
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.center,
                                   end: Alignment.centerRight,
@@ -125,7 +128,7 @@ class _PetCardState extends State<PetCard> {
                     ),
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           left: horizontalPadding,
                           right: horizontalPadding,
                           top: topPadding,
@@ -140,7 +143,7 @@ class _PetCardState extends State<PetCard> {
                               '${sex.isNotEmpty ? sex[0].toUpperCase() : ''}   $ageText',
                               style: AppTextStyles.midText(context),
                             ),
-                            Spacer(),
+                            const Spacer(),
                             FeedButton(
                               size: cardHeight * 0.335,
                               lastFed: lastFed,
@@ -148,7 +151,7 @@ class _PetCardState extends State<PetCard> {
                               dailyFeedCount: dailyFeedCount,
                               dailyFeedGoal: dailyFeedGoal,
                             ),
-                            Spacer(),
+                            const Spacer(),
                           ],
                         ),
                       ),

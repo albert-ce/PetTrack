@@ -3,18 +3,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
-import 'package:pet_track/models/pets_db.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class AddEditPetScreen extends StatefulWidget {
-  final Map<String, dynamic>? petData; // null = afegir, !null = edició
+  final Map<String, dynamic>? petData;
   const AddEditPetScreen({super.key, this.petData});
 
   @override
@@ -27,12 +29,16 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
       TextEditingController();
   final TextEditingController _racaController = TextEditingController();
 
+  final _uuid = const Uuid();
+
   DateTime? _dataNaixement;
   String? _tipusAnimal = 'gos';
   String? _sexe = '?';
   int _menjarsAlDia = 4;
   XFile? _imatge;
   String? _raca;
+  String? _imageUrl;
+  String? _tempPetId;
   bool _carregantRaca = false;
 
   bool get _editant => widget.petData != null;
@@ -40,12 +46,10 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
   @override
   void initState() {
     super.initState();
-
     if (_editant) {
       final p = widget.petData!;
       _nomController.text = p['name'] ?? '';
       _racaController.text = p['breed'] ?? '';
-
       final bd = p['birthDate'];
       _dataNaixement = bd is Timestamp ? bd.toDate() : (bd as DateTime?);
       if (_dataNaixement != null) {
@@ -55,21 +59,13 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
       _tipusAnimal = p['species'] ?? _tipusAnimal;
       _sexe = p['sex'] ?? _sexe;
       _menjarsAlDia = p['dailyFeedGoal'] ?? _menjarsAlDia;
-      if (p['image'] != null &&
-          p['image'] is String &&
-          (p['image'] as String).isNotEmpty) {
-        final path = p['image'] as String;
-        if (File(path).existsSync()) {
-          _imatge = XFile(path);
-        }
-      }
+      _imageUrl = p['imageUrl'] as String?;
     }
   }
 
   Future<String> _obtenirRaca(File imatge) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
     if (apiKey == null) return 'Raça desconeguda';
-
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=$apiKey',
     );
@@ -78,7 +74,6 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
 Ets un expert en animals. Identifica la raça exacta o més aproximada que puguis del gos o gat que apareix a la imatge.
 Dona'm únicament el nom, sense cap altre text ni puntuació.
 Si no ho saps, respon exactament així: Raça desconeguda''';
-
     final body = jsonEncode({
       'contents': [
         {
@@ -91,7 +86,6 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
         },
       ],
     });
-
     try {
       final res = await http.post(
         url,
@@ -107,9 +101,38 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     return 'Raça desconeguda';
   }
 
-  Future<void> _seleccionaImatge() async {
-    final ImagePicker picker = ImagePicker();
+  Future<String> _pujaImatgeFirebase(File imatge, String petId) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final ref = FirebaseStorage.instance.ref('users/$uid/pets/$petId.jpg');
+    final snap = await ref.putFile(imatge);
+    return await snap.ref.getDownloadURL();
+  }
 
+  Future<void> _processaImatge(XFile imatge) async {
+    setState(() {
+      _imatge = imatge;
+      _carregantRaca = true;
+      _raca = null;
+      _racaController.text = '';
+    });
+    final petId =
+        _editant
+            ? widget.petData!['id'] as String
+            : (_tempPetId ??= _uuid.v4());
+    final racaF = _obtenirRaca(File(imatge.path));
+    final uploadF = _pujaImatgeFirebase(File(imatge.path), petId);
+    final results = await Future.wait([racaF, uploadF]);
+    if (!mounted) return;
+    setState(() {
+      _carregantRaca = false;
+      _raca = results[0];
+      _racaController.text = _raca!;
+      _imageUrl = results[1];
+    });
+  }
+
+  void _seleccionaImatge() {
+    final picker = ImagePicker();
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -124,7 +147,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                 title: const Text('Fer foto'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? imatge = await picker.pickImage(
+                  final imatge = await picker.pickImage(
                     source: ImageSource.camera,
                   );
                   if (imatge != null) _processaImatge(imatge);
@@ -135,7 +158,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                 title: const Text('Seleccionar de la galeria'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? imatge = await picker.pickImage(
+                  final imatge = await picker.pickImage(
                     source: ImageSource.gallery,
                   );
                   if (imatge != null) _processaImatge(imatge);
@@ -146,24 +169,12 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     );
   }
 
-  Future<void> _processaImatge(XFile imatge) async {
-    setState(() {
-      _imatge = imatge;
-      _carregantRaca = true;
-      _raca = null;
-      _racaController.text = '';
-    });
-    final raca = await _obtenirRaca(File(imatge.path));
-    if (!mounted) return;
-    setState(() {
-      _carregantRaca = false;
-      _raca = raca;
-      _racaController.text = raca;
-    });
-  }
-
-  Future<void> _desaMascota() async {
-    final dades = <String, dynamic>{
+  void _desaMascota() {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final petId =
+        _editant ? widget.petData!['id'] as String : (_tempPetId ?? _uuid.v4());
+    final dadesBase = <String, dynamic>{
+      'id': petId,
       'name': _nomController.text.trim(),
       'breed': _raca ?? _racaController.text.trim(),
       'birthDate':
@@ -171,22 +182,50 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
       'species': _tipusAnimal,
       'sex': _sexe,
       'dailyFeedGoal': _menjarsAlDia,
-      'image': _imatge?.path,
     }..removeWhere((_, v) => v == null || (v is String && v.isEmpty));
-
-    if (_editant) {
-      final id = widget.petData!['id'] as String;
-      await updatePet(id, dades);
-      if (mounted) Navigator.pop(context, {...widget.petData!, ...dades});
-    } else {
-      await addPet({...dades, 'dailyFeedCount': 0, 'lastFeed': DateTime.now()});
-      if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      Navigator.pop(
+        context,
+        _editant ? {...widget.petData!, ...dadesBase} : true,
+      );
     }
+    Future(() async {
+      String? urlImatge = _imageUrl;
+      if (_imatge != null) {
+        urlImatge = await _pujaImatgeFirebase(File(_imatge!.path), petId);
+      }
+      final dades = {...dadesBase, 'imageUrl': urlImatge};
+      final col = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('pets');
+      if (_editant) {
+        await col.doc(petId).update(dades);
+      } else {
+        await col.doc(petId).set({
+          ...dades,
+          'dailyFeedCount': 0,
+          'lastFeed': DateTime.now(),
+        });
+      }
+    });
   }
 
   Future<void> _eliminaMascota() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     final id = widget.petData!['id'] as String;
-    await deletePet(id);
+
+    try {
+      await FirebaseStorage.instance.ref('users/$uid/pets/$id.jpg').delete();
+    } catch (_) {}
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('pets')
+        .doc(id)
+        .delete();
+
     if (mounted) Navigator.pop(context, {'deleted': true, 'id': id});
   }
 
@@ -241,14 +280,12 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
-
     final inputDecorationTheme = theme.inputDecorationTheme.copyWith(
       labelStyle: const TextStyle(color: AppColors.primary),
       focusedBorder: const UnderlineInputBorder(
         borderSide: BorderSide(color: AppColors.primary),
       ),
     );
-
     return Theme(
       data: theme.copyWith(
         inputDecorationTheme: inputDecorationTheme,
@@ -292,10 +329,9 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                         children: [
                           ShaderMask(
                             shaderCallback:
-                                (bounds) =>
-                                    AppColors.gradient.createShader(bounds),
+                                (b) => AppColors.gradient.createShader(b),
                             child: Icon(
-                              _imatge == null
+                              _imatge == null && _imageUrl == null
                                   ? Icons.add_a_photo
                                   : Icons.check_circle,
                               size: screenHeight * 0.03,
@@ -305,10 +341,9 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                           SizedBox(width: screenHeight * 0.01),
                           ShaderMask(
                             shaderCallback:
-                                (bounds) =>
-                                    AppColors.gradient.createShader(bounds),
+                                (b) => AppColors.gradient.createShader(b),
                             child: Text(
-                              _imatge == null
+                              _imatge == null && _imageUrl == null
                                   ? 'Afegir imatge'
                                   : 'Imatge afegida',
                               style: AppTextStyles.primaryText(
@@ -319,6 +354,28 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                               ),
                             ),
                           ),
+                          if (_imatge != null || _imageUrl != null) ...[
+                            SizedBox(width: screenHeight * 0.015),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                screenHeight * 0.01,
+                              ),
+                              child:
+                                  _imatge != null
+                                      ? Image.file(
+                                        File(_imatge!.path),
+                                        width: screenHeight * 0.06,
+                                        height: screenHeight * 0.06,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.network(
+                                        _imageUrl!,
+                                        width: screenHeight * 0.06,
+                                        height: screenHeight * 0.06,
+                                        fit: BoxFit.cover,
+                                      ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

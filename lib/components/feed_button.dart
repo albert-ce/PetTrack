@@ -8,7 +8,7 @@ class FeedButton extends StatefulWidget {
   final int dailyFeedCount;
   final int dailyFeedGoal;
   final DateTime lastFed;
-  final VoidCallback onFeed;
+  final void Function(bool) onFeed;
 
   const FeedButton({
     super.key,
@@ -34,13 +34,17 @@ class _FeedButtonState extends State<FeedButton> {
     _lastFed = widget.lastFed;
   }
 
-  void _handleFeed() {
+  void _handleFeed(bool add) {
     if (_count < widget.dailyFeedGoal) {
+      widget.onFeed(add);
       setState(() {
-        _count++;
-        _lastFed = DateTime.now();
+        if (add) {
+          _lastFed = DateTime.now();
+          _count = _count + 1;
+        } else {
+          _count = max(_count - 1, 0);
+        }
       });
-      widget.onFeed();
     }
   }
 
@@ -49,7 +53,8 @@ class _FeedButtonState extends State<FeedButton> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _handleFeed,
+      onTap: () => _handleFeed(true),
+      onLongPress: () => _handleFeed(false),
       child: SizedBox(
         width: widget.size,
         height: widget.size,
