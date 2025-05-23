@@ -6,6 +6,7 @@ import 'package:pet_track/screens/calendar_screen.dart';
 import 'package:pet_track/screens/pet_list_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:pet_track/screens/profile_screen.dart';
+import 'package:pet_track/screens/routes_screen.dart';
 import 'dart:convert';
 
 import 'package:pet_track/services/user_service.dart';
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pages = const [
     PetListScreen(),
     CalendarScreen(),
-    MapScreen(),
+    RoutesWithPetsScreen(),
     ProfileScreen(),
   ];
 
