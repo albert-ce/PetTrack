@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pet_track/components/app_bar.dart';
+import 'package:pet_track/components/map.dart';
 import 'package:pet_track/components/nav_bar.dart';
 import 'package:pet_track/screens/calendar_screen.dart';
 import 'package:pet_track/screens/pet_list_screen.dart';
@@ -49,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pages = const [
     PetListScreen(),
     CalendarScreen(),
-    Placeholder(),
+    MapScreen(),
     ProfileScreen(),
   ];
 

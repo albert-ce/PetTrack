@@ -84,3 +84,6 @@ macos/firebase_app_id_file.json
 
 *.log
 *.tmp
+
+key.properties
+android/key.properties
