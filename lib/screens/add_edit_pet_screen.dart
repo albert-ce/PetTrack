@@ -308,7 +308,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                       ),
                     ],
                   ),
-                ] else if (_raca != null) ...[
+                ] else if (_editant || _raca != null) ...[
                   TextField(
                     controller: _racaController,
                     decoration: const InputDecoration(
