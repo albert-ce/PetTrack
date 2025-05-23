@@ -76,13 +76,14 @@ class _PetListScreenState extends State<PetListScreen> {
                   ...pets.map(
                     (pet) => PetCard(
                       petData: pet,
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push<bool>(
                           context,
                           MaterialPageRoute(
                             builder: (_) => PetDetailsScreen(petData: pet),
                           ),
                         );
+                        _refreshPets();
                       },
                     ),
                   ),
