@@ -16,10 +16,6 @@ class AuthService {
     gcal
         .CalendarApi
         .calendarAppCreatedScope, // El scope para el calendario de la app
-    // Si en algún momento necesitas leer/escribir en otros calendarios del usuario:
-    // gcal.CalendarApi.calendarEventsScope,
-    // Si solo necesitas leer de otros calendarios:
-    // gcal.CalendarApi.calendarReadonlyScope,
   ];
 
   late final GoogleSignIn _googleSignIn;
@@ -102,7 +98,7 @@ class AuthService {
     final AccessToken accessToken = AccessToken(
       'Bearer',
       googleAuth.accessToken!,
-      DateTime.now().add(Duration(hours: 1)), // Expiración estimada
+      DateTime.now().toUtc().add(Duration(hours: 1)), // Expiración estimada
     );
 
     final AccessCredentials credentials = AccessCredentials(
