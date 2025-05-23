@@ -10,7 +10,7 @@ import 'package:pet_track/screens/add_edit_pet_screen.dart';
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
 
-  const PetDetailsScreen({Key? key, required this.petData}) : super(key: key);
+  const PetDetailsScreen({super.key, required this.petData});
 
   @override
   State<PetDetailsScreen> createState() => _PetDetailsScreenState();
@@ -53,15 +53,11 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             }()
             : '';
 
-    final imgPath = pet['image'] as String?;
+    final String? imageUrl = pet['imageUrl'];
     final ImageProvider imageProvider =
-        (imgPath != null && imgPath.startsWith('/'))
-            ? FileImage(File(imgPath))
-            : (imgPath != null && imgPath.startsWith('http'))
-            ? NetworkImage(imgPath)
-            : (imgPath == null && species == 'gos')
-            ? const AssetImage('assets/images/gos.png')
-            : const AssetImage('assets/images/gat.png');
+        imageUrl != null && imageUrl.isNotEmpty
+            ? NetworkImage(imageUrl)
+            : AssetImage('assets/images/$species.png');
 
     // ────────── Menjars i passeigs ────────── DESMUTEIG QUAN TINGUEM BE BD
     int? mealsDone;
