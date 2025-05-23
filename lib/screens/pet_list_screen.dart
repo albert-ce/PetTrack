@@ -62,6 +62,12 @@ class _PetListScreenState extends State<PetListScreen> {
             );
           } else {
             final pets = snapshot.data!;
+            for (final pet in pets) {
+              final url = pet['imageUrl'] as String?;
+              if (url != null && url.isNotEmpty) {
+                imageCache.evict(NetworkImage(url));
+              }
+            }
             return RefreshIndicator(
               onRefresh: _refreshPets,
               child: ListView(

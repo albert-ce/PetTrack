@@ -169,7 +169,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     );
   }
 
-  void _desaMascota() {
+  Future<void> _desaMascota() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final petId =
         _editant ? widget.petData!['id'] as String : (_tempPetId ?? _uuid.v4());
@@ -183,32 +183,29 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
       'sex': _sexe,
       'dailyFeedGoal': _menjarsAlDia,
     }..removeWhere((_, v) => v == null || (v is String && v.isEmpty));
-    if (mounted) {
-      Navigator.pop(
-        context,
-        _editant ? {...widget.petData!, ...dadesBase} : true,
-      );
+
+    String? urlImatge = _imageUrl;
+    if (_imatge != null) {
+      urlImatge = await _pujaImatgeFirebase(File(_imatge!.path), petId);
     }
-    Future(() async {
-      String? urlImatge = _imageUrl;
-      if (_imatge != null) {
-        urlImatge = await _pujaImatgeFirebase(File(_imatge!.path), petId);
-      }
-      final dades = {...dadesBase, 'imageUrl': urlImatge};
-      final col = FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('pets');
-      if (_editant) {
-        await col.doc(petId).update(dades);
-      } else {
-        await col.doc(petId).set({
-          ...dades,
-          'dailyFeedCount': 0,
-          'lastFeed': DateTime.now(),
-        });
-      }
-    });
+    final dades = {...dadesBase, 'imageUrl': urlImatge};
+
+    final col = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('pets');
+    if (_editant) {
+      await col.doc(petId).update(dades);
+    } else {
+      await col.doc(petId).set({
+        ...dades,
+        'dailyFeedCount': 0,
+        'lastFeed': DateTime.now(),
+      });
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context, _editant ? {...widget.petData!, ...dades} : true);
   }
 
   Future<void> _eliminaMascota() async {

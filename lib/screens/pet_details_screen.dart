@@ -53,6 +53,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             : '';
 
     final String? imageUrl = pet['imageUrl'];
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      imageCache.evict(NetworkImage(imageUrl), includeLive: true);
+    }
     final ImageProvider imageProvider =
         imageUrl != null && imageUrl.isNotEmpty
             ? NetworkImage(imageUrl)
