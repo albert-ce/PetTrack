@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_track/core/app_colors.dart';
@@ -101,10 +102,25 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     return 'Raça desconeguda';
   }
 
-  Future<String> _pujaImatgeFirebase(File imatge, String petId) async {
+  Future<XFile> _comprimeixImatge(XFile imatgeOriginal) async {
+    final imatgeComprimida = await FlutterImageCompress.compressAndGetFile(
+      imatgeOriginal.path,
+      '${imatgeOriginal.path}_compressed.jpg',
+      quality: 40,
+      minWidth: 700,
+      minHeight: 700,
+    );
+    return imatgeComprimida != null
+        ? XFile(imatgeComprimida.path)
+        : imatgeOriginal;
+  }
+
+  Future<String> _pujaImatgeFirebase(XFile imatge, String petId) async {
+    final imatgeComprimida = await _comprimeixImatge(imatge);
+    final file = File(imatgeComprimida.path);
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final ref = FirebaseStorage.instance.ref('users/$uid/pets/$petId.jpg');
-    final snap = await ref.putFile(imatge);
+    final snap = await ref.putFile(file);
     return await snap.ref.getDownloadURL();
   }
 
@@ -120,7 +136,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
             ? widget.petData!['id'] as String
             : (_tempPetId ??= _uuid.v4());
     final racaF = _obtenirRaca(File(imatge.path));
-    final uploadF = _pujaImatgeFirebase(File(imatge.path), petId);
+    final uploadF = _pujaImatgeFirebase(XFile(imatge.path), petId);
     final results = await Future.wait([racaF, uploadF]);
     if (!mounted) return;
     setState(() {
@@ -205,7 +221,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
               ),
             ),
       );
-      urlImatge = await _pujaImatgeFirebase(File(_imatge!.path), petId);
+      urlImatge = await _pujaImatgeFirebase(XFile(_imatge!.path), petId);
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
     }
 
