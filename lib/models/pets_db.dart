@@ -36,7 +36,6 @@ Future<String> addPet(
   return petId;
 }
 
-/// 🔄 **Nuevo**: actualizar un documento
 Future<void> updatePet(
   String petId,
   Map<String, dynamic> data, {
@@ -53,7 +52,6 @@ Future<void> updatePet(
   ).doc(petId).update({...data, 'updatedAt': FieldValue.serverTimestamp()});
 }
 
-/// Lista completa ordenada por nombre
 Future<List<Map<String, dynamic>>> getPets({
   FirebaseFirestore? firestore,
   FirebaseAuth? auth,
@@ -69,7 +67,6 @@ Future<List<Map<String, dynamic>>> getPets({
       .toList();
 }
 
-/// 🔄 **Helper**: leer una sola mascota por id
 Future<Map<String, dynamic>> getPetById(
   String petId, {
   FirebaseFirestore? firestore,
@@ -82,4 +79,15 @@ Future<Map<String, dynamic>> getPetById(
   final doc = await _petsCol(fs, user.uid).doc(petId).get();
   if (!doc.exists) throw StateError('Pet not found');
   return <String, dynamic>{'id': doc.id, ...doc.data()!};
+}
+
+Future<void> deletePet(
+  String petId, {
+  FirebaseFirestore? firestore,
+  FirebaseAuth? auth,
+}) async {
+  final fs = _fs(firestore);
+  final user = _auth(auth).currentUser;
+  if (user == null) throw StateError('No authenticated user');
+  await _petsCol(fs, user.uid).doc(petId).delete();
 }

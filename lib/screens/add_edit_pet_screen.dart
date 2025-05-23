@@ -184,6 +184,37 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     }
   }
 
+  Future<void> _eliminaMascota() async {
+    final id = widget.petData!['id'] as String;
+    await deletePet(id);
+    if (mounted) Navigator.pop(context, {'deleted': true, 'id': id});
+  }
+
+  Future<void> _confirmaElimina() async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Eliminar mascota'),
+            content: const Text('Segur que vols eliminar aquesta mascota?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel·lar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Eliminar',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+    if (res == true) _eliminaMascota();
+  }
+
   Widget _botoCircular({
     required IconData icona,
     required bool seleccionat,
@@ -296,12 +327,12 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                 SizedBox(height: screenHeight * 0.0125),
                 if (_carregantRaca) ...[
                   Row(
-                    children: [
-                      const Icon(Icons.auto_awesome, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      const Text('Detectant raça amb IA...'),
-                      const SizedBox(width: 8),
-                      const SizedBox(
+                    children: const [
+                      Icon(Icons.auto_awesome, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('Detectant raça amb IA.'),
+                      SizedBox(width: 8),
+                      SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
@@ -432,6 +463,40 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
                   ],
                 ),
                 SizedBox(height: screenHeight * 0.02),
+                if (_editant) ...[
+                  Material(
+                    borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(
+                          screenHeight * 0.015,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(
+                          screenHeight * 0.015,
+                        ),
+                        onTap: _confirmaElimina,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenHeight * 0.02,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Eliminar mascota',
+                              style: AppTextStyles.bigText(context).copyWith(
+                                color: Colors.white,
+                                fontSize: screenHeight * 0.03,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                ],
                 Material(
                   borderRadius: BorderRadius.circular(screenHeight * 0.015),
                   child: Ink(

@@ -109,10 +109,14 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                   builder: (_) => AddEditPetScreen(petData: pet),
                 ),
               );
+              if (!mounted || updatedPet == null) return;
 
-              if (updatedPet != null && mounted) {
-                setState(() => pet = updatedPet);
+              if (updatedPet['deleted'] == true) {
+                Navigator.pop(context, true);
+                return;
               }
+
+              setState(() => pet = updatedPet);
             },
           ),
         ],
