@@ -1,10 +1,9 @@
-// lib/screens/routes_with_pets_screen.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/models/pets_db.dart';
+import 'package:geolocator/geolocator.dart';
 
 class RoutesWithPetsScreen extends StatefulWidget {
   const RoutesWithPetsScreen({super.key});
@@ -16,11 +15,16 @@ class RoutesWithPetsScreen extends StatefulWidget {
 class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
   late Future<List<Map<String, dynamic>>> _petsFuture;
   final Set<String> _selectedIds = {};
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
     _petsFuture = getPets();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _centerMapOnUser();
+    });
   }
 
   void _togglePet(String id) {
@@ -40,14 +44,36 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
       } else {
         _selectedIds
           ..clear()
-          ..addAll(pets.map((e) => e['petId'] as String));
+          ..addAll(pets.map((e) => e['id'] as String));
       }
     });
+  }
+
+  Future<void> _centerMapOnUser() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition();
+      final latLng = LatLng(position.latitude, position.longitude);
+
+      _mapController?.animateCamera(CameraUpdate.newLatLng(latLng));
+    } catch (e) {
+      debugPrint('Error centrant la ubicació: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -57,10 +83,11 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           final pets = snapshot.data ?? [];
+          final allSelected = _selectedIds.length == pets.length;
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -75,8 +102,10 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Selecciona els teus acompanyants:',
-                        style: AppTextStyles.midText(context),
+                        'Tria acompanyants:',
+                        style: AppTextStyles.midText(
+                          context,
+                        ).copyWith(fontSize: size.width * 0.045),
                       ),
                     ),
                     ElevatedButton(
@@ -84,7 +113,9 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                       style: ButtonStyle(
                         elevation: WidgetStateProperty.all(0),
                         backgroundColor: WidgetStateProperty.all(
-                          Colors.grey.shade300,
+                          allSelected
+                              ? AppColors.primary
+                              : AppColors.backgroundComponent,
                         ),
                         shape: WidgetStateProperty.all(
                           RoundedRectangleBorder(
@@ -93,8 +124,10 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                         ),
                       ),
                       child: Text(
-                        'Selecciona tots',
-                        style: AppTextStyles.midText(context),
+                        allSelected ? 'Descarta tots' : 'Selecciona tots',
+                        style: AppTextStyles.midText(
+                          context,
+                        ).copyWith(color: allSelected ? Colors.white : null),
                       ),
                     ),
                   ],
@@ -103,15 +136,24 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
               SizedBox(
                 height: 110,
                 child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                   scrollDirection: Axis.horizontal,
                   itemBuilder: (context, index) {
                     final pet = pets[index];
-                    final id = pet['petId'] as String;
+                    final id = pet['id'] as String;
                     final selected = _selectedIds.contains(id);
+                    final species = pet['species'] ?? "example";
+                    final String? imageUrl = pet['imageUrl'];
+                    if (imageUrl != null && imageUrl.isNotEmpty) {
+                      imageCache.evict(
+                        NetworkImage(imageUrl),
+                        includeLive: true,
+                      );
+                    }
+                    final ImageProvider imageProvider =
+                        imageUrl != null && imageUrl.isNotEmpty
+                            ? NetworkImage(imageUrl)
+                            : AssetImage('assets/images/$species.png');
                     return GestureDetector(
                       onTap: () => _togglePet(id),
                       child: Stack(
@@ -119,16 +161,15 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                         children: [
                           CircleAvatar(
                             radius: 48,
-                            backgroundImage: FileImage(
-                              File(pet['image'] as String),
-                            ),
+                            backgroundColor: AppColors.backgroundComponent,
+                            backgroundImage: imageProvider,
                           ),
                           if (selected)
                             Container(
                               width: 96,
                               height: 96,
                               decoration: BoxDecoration(
-                                color: Colors.blue.withAlpha(
+                                color: AppColors.primary.withAlpha(
                                   (0.6 * 255).toInt(),
                                 ),
                                 shape: BoxShape.circle,
@@ -151,67 +192,73 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                 child: Stack(
                   children: [
                     GoogleMap(
+                      onMapCreated: (controller) {
+                        _mapController = controller;
+                      },
                       initialCameraPosition: const CameraPosition(
                         target: LatLng(35.6938, 139.7034),
                         zoom: 15,
                       ),
-                      markers: {
-                        const Marker(
-                          markerId: MarkerId('start'),
-                          position: LatLng(35.6938, 139.7034),
-                        ),
-                      },
                       myLocationEnabled: true,
                       myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
+                      zoomControlsEnabled: true,
                     ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).padding.bottom + 80,
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: FloatingActionButton(
+                        onPressed: _centerMapOnUser,
+                        backgroundColor: AppColors.primary,
+                        mini: true,
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Colors.white,
                         ),
-                        child: SizedBox(
-                          width: size.width * 0.9,
-                          height: 68,
-                          child: ElevatedButton(
-                            onPressed: _selectedIds.isEmpty ? null : () {},
-                            style: ButtonStyle(
-                              elevation: WidgetStateProperty.all(0),
-                              backgroundColor:
-                                  WidgetStateProperty.resolveWith<Color?>((
-                                    states,
-                                  ) {
-                                    if (states.contains(WidgetState.disabled)) {
-                                      return Colors.grey;
-                                    }
-                                    return Colors.transparent;
-                                  }),
-                              shadowColor: WidgetStateProperty.all(
-                                Colors.transparent,
-                              ),
-                              shape: WidgetStateProperty.all(
-                                RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                              padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      ),
+                    ),
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      bottom: MediaQuery.of(context).padding.bottom + 16,
+                      child: SizedBox(
+                        height: 68,
+                        child: ElevatedButton(
+                          onPressed: _selectedIds.isEmpty ? null : () {},
+                          style: ButtonStyle(
+                            elevation: WidgetStateProperty.all(0),
+                            backgroundColor:
+                                WidgetStateProperty.resolveWith<Color?>((
+                                  states,
+                                ) {
+                                  if (states.contains(WidgetState.disabled)) {
+                                    return Colors.grey;
+                                  }
+                                  return Colors.transparent;
+                                }),
+                            shadowColor: WidgetStateProperty.all(
+                              Colors.transparent,
                             ),
-                            child: Ink(
-                              decoration: BoxDecoration(
-                                gradient:
-                                    _selectedIds.isEmpty
-                                        ? null
-                                        : AppColors.gradient,
+                            shape: WidgetStateProperty.all(
+                              RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Center(
-                                child: Text(
-                                  'Iniciar ruta (${_selectedIds.length})',
-                                  style: AppTextStyles.bigText(
-                                    context,
-                                  ).copyWith(color: Colors.white),
-                                ),
+                            ),
+                            padding: WidgetStateProperty.all(EdgeInsets.zero),
+                          ),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient:
+                                  _selectedIds.isEmpty
+                                      ? null
+                                      : AppColors.gradient,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Iniciar ruta (${_selectedIds.length})',
+                                style: AppTextStyles.bigText(
+                                  context,
+                                ).copyWith(color: Colors.white),
                               ),
                             ),
                           ),

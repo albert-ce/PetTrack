@@ -10,7 +10,7 @@ import 'package:pet_track/screens/pet_edit_screen.dart';
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
 
-  const PetDetailsScreen({Key? key, required this.petData}) : super(key: key);
+  const PetDetailsScreen({super.key, required this.petData});
 
   @override
   State<PetDetailsScreen> createState() => _PetDetailsScreenState();
