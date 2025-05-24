@@ -99,16 +99,14 @@ class _CircleProgressPainter extends CustomPainter {
         Paint()
           ..color = Colors.black.withAlpha((255 * 0.1).toInt())
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 4;
+          ..strokeWidth = size.width / 16;
 
     final fgPaint =
         Paint()
           ..color = AppColors.accent
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
+          ..strokeWidth = size.width / 16
           ..strokeCap = StrokeCap.butt;
-
-    canvas.drawCircle(center, radius, bgPaint);
 
     if (segments <= 0) return;
 

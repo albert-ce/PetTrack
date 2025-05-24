@@ -263,13 +263,13 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   FeedButton(
-                    size: screenW * .35,
+                    size: screenW * .3,
                     dailyFeedCount: _dailyFeedCount,
                     dailyFeedGoal: _dailyFeedGoal,
                     lastFed: _lastFed,
                     onFeed: _updateFeed,
                   ),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: 30),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
