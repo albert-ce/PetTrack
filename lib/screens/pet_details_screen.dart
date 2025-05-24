@@ -263,7 +263,7 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   FeedButton(
-                    size: screenW * .45,
+                    size: screenW * .35,
                     dailyFeedCount: _dailyFeedCount,
                     dailyFeedGoal: _dailyFeedGoal,
                     lastFed: _lastFed,
@@ -284,10 +284,10 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 26),
             Center(
               child: Text(
-                "Característiques de l'animal:",
+                "Característiques:",
                 style: AppTextStyles.bigText(context),
               ),
             ),
