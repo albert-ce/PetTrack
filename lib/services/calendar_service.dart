@@ -59,7 +59,7 @@ class CalendarService {
           ..timeZone = 'Europe/Madrid'; // Ajusta la zona horaria si es necesario
 
         final createdCalendar = await _calendarApi.calendars.insert(newCalendar);
-        if (createdCalendar != null && createdCalendar.id != null) {
+        if (createdCalendar.id != null) {
           print('Calendario "PetTrack" creado con ID: ${createdCalendar.id}');
           return createdCalendar.id;
         } else {

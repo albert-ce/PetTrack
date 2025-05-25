@@ -1,20 +1,17 @@
-// En screens/add_calendar_task_screen.dart
-
-import 'dart:convert'; // Importa para json.encode y json.decode
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:pet_track/services/calendar_service.dart';
-import 'package:intl/intl.dart'; // Para formatear fechas y horas
+import 'package:intl/intl.dart'; 
 
 class AddEditTaskScreen extends StatefulWidget {
   final gcal.Event? taskData;
   final DateTime? initialSelectedDay;
   final CalendarService calendarService;
   final String petTrackCalendarId;
-  final List<Map<String, dynamic>> availablePets; // <-- ¡Nuevo parámetro!
+  final List<Map<String, dynamic>> availablePets;
 
   const AddEditTaskScreen({
     super.key,
@@ -41,11 +38,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   TimeOfDay? _selectedEndTime;
   bool _isAllDay = false;
 
-  // Acceso a los servicios a través de widget.calendarService y widget.petTrackCalendarId
   CalendarService get _calendarService => widget.calendarService;
   String get _petTrackCalendarId => widget.petTrackCalendarId;
 
-  List<String> _selectedPetIds = []; // IDs de las mascotas seleccionadas
+  List<String> _selectedPetIds = []; 
 
   bool get _editant => widget.taskData != null;
 
@@ -64,7 +60,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         _selectedDate = task.start!.dateTime!.toLocal();
         _selectedStartTime = TimeOfDay.fromDateTime(_selectedDate!);
       } else if (task.start?.date != null) {
-        // Para eventos de todo el día, la fecha de inicio es solo la fecha
         _selectedDate = task.start!.date!;
       }
 
@@ -78,8 +73,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
       }
 
-      // Cargar IDs de mascotas asociadas si existen
-      // CORRECCIÓN: 'privateProperty' a 'private'
       if (task.extendedProperties?.private?['petIds'] != null) {
         try {
           final decoded = json.decode(
@@ -95,10 +88,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         }
       }
     } else {
-      // Si es una nueva tarea, usa el día inicial pasado o el día actual
       _selectedDate = widget.initialSelectedDay ?? DateTime.now();
       _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-      // Establece horas predeterminadas para nuevas tareas
       _selectedStartTime = TimeOfDay.now();
       _selectedEndTime = TimeOfDay.fromDateTime(
         DateTime.now().add(const Duration(hours: 1)),
@@ -191,7 +182,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     if (_petTrackCalendarId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Error: ID del calendario no disponible.'),
+          content: Text('Error: ID del calendari no disponible.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -201,7 +192,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('El título de la tarea no puede estar vacío.'),
+          content: Text('El titol de la tasca no pot estar buit.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -211,7 +202,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Debes seleccionar una fecha para la tarea.'),
+          content: Text('Has de seleccionar una data per la tasca.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -232,7 +223,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Debes seleccionar una hora de inicio para la tarea.',
+              'Has de seleccionar una hora d\'inici per a la tasca.',
             ),
             backgroundColor: Colors.red,
           ),
@@ -268,7 +259,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       newEvent.end = gcal.EventDateTime(dateTime: endDateTime.toUtc());
     }
 
-    // --- ¡AÑADE ESTO PARA GUARDAR LOS IDs DE LAS MASCOTAS! ---
     if (_selectedPetIds.isNotEmpty) {
       newEvent.extendedProperties = gcal.EventExtendedProperties(
         // CORRECCIÓN: 'privateProperty' a 'private'
@@ -279,7 +269,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         },
       );
     }
-    // --- FIN DE LA ADICIÓN ---
 
     showDialog(
       context: context,
@@ -292,7 +281,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                 const SizedBox(width: 20),
                 Expanded(
                   child: Text(
-                    _editant ? 'Guardando tarea...' : 'Añadiendo tarea...',
+                    _editant ? 'Guardant tasca...' : 'Afegint tasca...',
                     style: AppTextStyles.midText(context),
                   ),
                 ),
@@ -328,8 +317,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
           SnackBar(
             content: Text(
               _editant
-                  ? 'Tarea "${resultEvent.summary}" actualizada con éxito.'
-                  : 'Tarea "${resultEvent.summary}" añadida con éxito.',
+                  ? 'Tasca "${resultEvent.summary}" actualizada amb éxit.'
+                  : 'Tasca "${resultEvent.summary}" afegida con éxit.',
             ),
             backgroundColor: Colors.green,
           ),
@@ -341,7 +330,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error al guardar la tarea.'),
+            content: Text('Error al guardar la tasca.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -353,10 +342,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
           rootNavigator: true,
         ).pop(); // Cierra el diálogo de carga
       }
-      print('Error al guardar la tarea: $e');
+      print('Error al guardar la tasca: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al guardar la tarea: ${e.toString()}'),
+          content: Text('Error al guardar la tasca: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -368,7 +357,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     if (_petTrackCalendarId.isEmpty || widget.taskData?.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Error: No se puede eliminar la tarea.'),
+          content: Text('Error: No es pot eliminar la tasca.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -379,8 +368,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Eliminar tarea'),
-            content: const Text('¿Seguro que quieres eliminar esta tarea?'),
+            title: const Text('Eliminar tasca'),
+            content: const Text('¿Seguro que vols eliminar aquesta tasca?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -409,7 +398,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   const SizedBox(width: 20),
                   Expanded(
                     child: Text(
-                      'Eliminando tarea...',
+                      'Eliminant tasca...',
                       style: AppTextStyles.midText(context),
                     ),
                   ),
@@ -427,7 +416,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tarea eliminada con éxito.'),
+            content: Text('Tasca eliminada amb éxit.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -436,10 +425,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
         }
-        print('Error al eliminar la tarea: $e');
+        print('Error al eliminar la tasca: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al eliminar la tarea: ${e.toString()}'),
+            content: Text('Error al eliminar la tasca: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -472,7 +461,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.background,
           title: Text(
-            _editant ? 'Editar Tarea' : 'Añadir Tarea',
+            _editant ? 'Editar tasca' : 'Afegir tasca',
             style: AppTextStyles.titleText(context),
           ),
         ),
@@ -486,14 +475,14 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                 TextField(
                   controller: _titleController,
                   decoration: const InputDecoration(
-                    labelText: 'Título de la tarea',
+                    labelText: 'Titol de la tasca',
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.008),
                 TextField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Descripción (opcional)',
+                    labelText: 'Descripció (opcional)',
                   ),
                   maxLines: 3,
                   keyboardType: TextInputType.multiline,
@@ -506,7 +495,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                     child: TextField(
                       controller: _dateController,
                       decoration: const InputDecoration(
-                        labelText: 'Fecha',
+                        labelText: 'Data',
                         suffixIcon: Icon(
                           Icons.calendar_today,
                           color: AppColors.primary,
@@ -519,7 +508,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
                 Row(
                   children: [
-                    Text('Todo el día:', style: AppTextStyles.midText(context)),
+                    Text('Tot el dia:', style: AppTextStyles.midText(context)),
                     const Spacer(),
                     Switch(
                       value: _isAllDay,
@@ -558,7 +547,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                       child: TextField(
                         controller: _startTimeController,
                         decoration: const InputDecoration(
-                          labelText: 'Hora de inicio',
+                          labelText: 'Hora d\'inici',
                           suffixIcon: Icon(
                             Icons.access_time,
                             color: AppColors.primary,
@@ -574,7 +563,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                       child: TextField(
                         controller: _endTimeController,
                         decoration: const InputDecoration(
-                          labelText: 'Hora de finalización (opcional)',
+                          labelText: 'Hora de finalització',
                           suffixIcon: Icon(
                             Icons.access_time,
                             color: AppColors.primary,
@@ -586,9 +575,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   SizedBox(height: screenHeight * 0.02),
                 ],
 
-                // --- Sección para seleccionar mascotas ---
                 Text(
-                  'Mascotas Asociadas:',
+                  'Mascotes asociades:',
                   style: AppTextStyles.midText(context),
                 ),
                 SizedBox(height: screenHeight * 0.0125),
@@ -620,7 +608,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                                   }
                                 });
                               },
-                              selectedColor: AppColors.primary.withOpacity(0.8),
+                              selectedColor: AppColors.primary,
                               checkmarkColor: Colors.white,
                               labelStyle: TextStyle(
                                 color: isSelected ? Colors.white : Colors.black,
@@ -631,7 +619,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                     ),
                 SizedBox(height: screenHeight * 0.02),
 
-                // --- Fin de la sección de selección de mascotas ---
                 Material(
                   borderRadius: BorderRadius.circular(screenHeight * 0.015),
                   child: Ink(
@@ -648,7 +635,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            _editant ? 'Guardar Cambios' : 'Añadir Tarea',
+                            _editant ? 'Guardar canvis' : 'Afegir tasca',
                             style: AppTextStyles.bigText(context).copyWith(
                               color: Colors.white,
                               fontSize: screenHeight * 0.03,
@@ -681,7 +668,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              'Eliminar Tarea',
+                              'Eliminar tasca',
                               style: AppTextStyles.bigText(context).copyWith(
                                 color: Colors.white,
                                 fontSize: screenHeight * 0.03,

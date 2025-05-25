@@ -1,20 +1,15 @@
-// En screens/calendar_screen.dart
-
-import 'dart:convert'; // Importa para json.decode
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pet_track/components/google_auth.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
+import 'package:pet_track/models/pets_db.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:pet_track/services/calendar_service.dart';
 import 'package:pet_track/screens/add_calendar_task_screen.dart';
-// Importa tu servicio de mascotas o la función getPets()
-// Por ejemplo:
-// import 'package:pet_track/services/pet_data_service.dart'; // Si tienes un servicio
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -34,7 +29,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<gcal.Event> _selectedEvents = [];
   bool _isLoadingEvents = true;
 
-  Future<List<Map<String, dynamic>>>? _petsFuture;
   List<Map<String, dynamic>> _availablePets = [];
 
   @override
@@ -46,23 +40,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadAllInitialData();
   }
 
-  // Tu función getPets() simulada o real
-  Future<List<Map<String, dynamic>>> getPets() async {
-    // Reemplaza esto con tu lógica real para obtener mascotas de Firebase/tu backend
-    await Future.delayed(const Duration(seconds: 1)); // Simula carga
-    return [
-      {'id': 'pet_id_1', 'name': 'Luna', 'species': 'cat'},
-      {'id': 'pet_id_2', 'name': 'Bobby', 'species': 'dog'},
-      {'id': 'pet_id_3', 'name': 'Rocky', 'species': 'dog'},
-      {'id': 'pet_id_4', 'name': 'Cleo', 'species': 'cat'},
-    ];
-  }
-
 
   Future<void> _loadAllInitialData() async {
     try {
-      _petsFuture = getPets(); // Inicia la carga de mascotas
-      _availablePets = await _petsFuture!; // Espera y asigna las mascotas
+      _petsFuture = getPets();
+      _availablePets = await _petsFuture!; 
       print('Mascotas cargadas: ${_availablePets.length}');
     } catch (e) {
       print('Error al cargar mascotas: $e');
