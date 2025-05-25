@@ -327,10 +327,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         final eventEndTime =
                             event.end?.dateTime ?? event.end?.date;
 
-                        // Obtener IDs de mascotas y nombres
                         List<String> associatedPetIds = [];
                         String associatedPetNames = '';
-                        // CORRECCIÓN: 'privateProperty' a 'private'
                         if (event.extendedProperties?.private?['petIds'] !=
                             null) {
                           try {
@@ -441,15 +439,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          if (_selectedDay == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Selecciona un día para añadir una tarea.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            return;
-          }
           if (_calendarService == null || _petTrackCalendarId == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -461,18 +450,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             );
             return;
           }
-          if (_availablePets.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Cargando mascotas... Por favor, espera o añade una mascota primero.',
-                ),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            return;
-          }
-
           final result = await Navigator.push(
             context,
             PageRouteBuilder(
@@ -481,8 +458,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     initialSelectedDay: _selectedDay,
                     calendarService: _calendarService!,
                     petTrackCalendarId: _petTrackCalendarId!,
-                    availablePets:
-                        _availablePets, // <-- ¡Pasando la lista de mascotas!
+                    availablePets: _availablePets,
                   ),
               transitionsBuilder: (_, animation, __, child) {
                 final offsetAnimation = Tween<Offset>(
