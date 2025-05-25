@@ -29,6 +29,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<gcal.Event> _selectedEvents = [];
   bool _isLoadingEvents = true;
 
+  Future<List<Map<String, dynamic>>>? _petsFuture;
   List<Map<String, dynamic>> _availablePets = [];
 
   @override
@@ -40,11 +41,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadAllInitialData();
   }
 
-
   Future<void> _loadAllInitialData() async {
     try {
       _petsFuture = getPets();
-      _availablePets = await _petsFuture!; 
+      _availablePets = await _petsFuture!;
       print('Mascotas cargadas: ${_availablePets.length}');
     } catch (e) {
       print('Error al cargar mascotas: $e');
@@ -59,7 +59,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final AuthClient? client = await _authService.getAuthenticatedClient();
     if (client != null) {
       _calendarService = CalendarService(client);
-      _petTrackCalendarId = await _calendarService!.ensurePetTrackCalendarExists();
+      _petTrackCalendarId =
+          await _calendarService!.ensurePetTrackCalendarExists();
       if (_petTrackCalendarId != null) {
         await _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
       } else {
@@ -76,7 +77,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  Future<void> _fetchEventsForVisibleRange(DateTime focusedDay, CalendarFormat format) async {
+  Future<void> _fetchEventsForVisibleRange(
+    DateTime focusedDay,
+    CalendarFormat format,
+  ) async {
     if (_calendarService == null || _petTrackCalendarId == null) {
       setState(() {
         _isLoadingEvents = false;
@@ -98,12 +102,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (format == CalendarFormat.month) {
         rangeStart = DateTime.utc(focusedDay.year, focusedDay.month, 1);
-        rangeEnd = DateTime.utc(focusedDay.year, focusedDay.month + 1, 0, 23, 59, 59);
+        rangeEnd = DateTime.utc(
+          focusedDay.year,
+          focusedDay.month + 1,
+          0,
+          23,
+          59,
+          59,
+        );
       } else {
-        rangeStart = focusedDay.subtract(Duration(days: focusedDay.weekday - 1));
-        rangeStart = DateTime.utc(rangeStart.year, rangeStart.month, rangeStart.day);
+        rangeStart = focusedDay.subtract(
+          Duration(days: focusedDay.weekday - 1),
+        );
+        rangeStart = DateTime.utc(
+          rangeStart.year,
+          rangeStart.month,
+          rangeStart.day,
+        );
         rangeEnd = rangeStart.add(Duration(days: 6));
-        rangeEnd = DateTime.utc(rangeEnd.year, rangeEnd.month, rangeEnd.day, 23, 59, 59);
+        rangeEnd = DateTime.utc(
+          rangeEnd.year,
+          rangeEnd.month,
+          rangeEnd.day,
+          23,
+          59,
+          59,
+        );
       }
 
       final fetchedEvents = await _calendarService!.getEvents(
@@ -150,16 +174,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // Función para obtener los nombres de las mascotas a partir de sus IDs
   String _getPetNamesFromIds(List<String> petIds) {
     if (petIds.isEmpty) return '';
-    final names = petIds.map((id) {
-      final pet = _availablePets.firstWhere(
-        (p) => p['id'] == id,
-        orElse: () => {'name': 'Mascota Desconocida'}, // Manejo si no se encuentra
-      );
-      return pet['name'] as String;
-    }).toList();
+    final names =
+        petIds.map((id) {
+          final pet = _availablePets.firstWhere(
+            (p) => p['id'] == id,
+            orElse:
+                () => {
+                  'name': 'Mascota Desconocida',
+                }, // Manejo si no se encuentra
+          );
+          return pet['name'] as String;
+        }).toList();
     return names.join(', ');
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +203,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _calendarFormat == CalendarFormat.month
-                        ? AppColors.primary
-                        : AppColors.backgroundComponentHover,
+                    backgroundColor:
+                        _calendarFormat == CalendarFormat.month
+                            ? AppColors.primary
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
@@ -198,9 +226,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _calendarFormat == CalendarFormat.week
-                        ? AppColors.primary
-                        : AppColors.backgroundComponentHover,
+                    backgroundColor:
+                        _calendarFormat == CalendarFormat.week
+                            ? AppColors.primary
+                            : AppColors.backgroundComponentHover,
                   ),
                   onPressed: () {
                     setState(() {
@@ -263,135 +292,150 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              markerSize: 8.0,
+              markerSize: 5.0,
               markersAutoAligned: false,
-              markersOffset: const PositionedOffset(bottom: 4, top: 0, start: 0),
               markersMaxCount: 1,
             ),
             eventLoader: _getEventsForDay,
           ),
           const Divider(),
           Expanded(
-            child: _isLoadingEvents
-                ? Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primary,
-                      ),
-                    ),
-                  )
-                : _selectedEvents.isEmpty
+            child:
+                _isLoadingEvents
                     ? Center(
-                        child: Text(
-                          'No hi ha res agendat per aquest dia.',
-                          style: AppTextStyles.midText(
-                            context,
-                          ).copyWith(color: AppColors.black),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
                         ),
-                      )
+                      ),
+                    )
+                    : _selectedEvents.isEmpty
+                    ? Center(
+                      child: Text(
+                        'No hi ha res agendat per aquest dia.',
+                        style: AppTextStyles.midText(
+                          context,
+                        ).copyWith(color: AppColors.black),
+                      ),
+                    )
                     : ListView.builder(
-                        itemCount: _selectedEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = _selectedEvents[index];
-                          final eventStartTime = event.start?.dateTime ?? event.start?.date;
-                          final eventEndTime = event.end?.dateTime ?? event.end?.date;
+                      itemCount: _selectedEvents.length,
+                      itemBuilder: (context, index) {
+                        final event = _selectedEvents[index];
+                        final eventStartTime =
+                            event.start?.dateTime ?? event.start?.date;
+                        final eventEndTime =
+                            event.end?.dateTime ?? event.end?.date;
 
-                          // Obtener IDs de mascotas y nombres
-                          List<String> associatedPetIds = [];
-                          String associatedPetNames = '';
-                          // CORRECCIÓN: 'privateProperty' a 'private'
-                          if (event.extendedProperties?.private?['petIds'] != null) {
-                            try {
-                              final decoded = json.decode(event.extendedProperties!.private!['petIds']!);
-                              if (decoded is List) {
-                                associatedPetIds = List<String>.from(decoded.map((id) => id.toString()));
-                                associatedPetNames = _getPetNamesFromIds(associatedPetIds);
-                              }
-                            } catch (e) {
-                              print('Error al decodificar petIds para mostrar: $e');
+                        // Obtener IDs de mascotas y nombres
+                        List<String> associatedPetIds = [];
+                        String associatedPetNames = '';
+                        // CORRECCIÓN: 'privateProperty' a 'private'
+                        if (event.extendedProperties?.private?['petIds'] !=
+                            null) {
+                          try {
+                            final decoded = json.decode(
+                              event.extendedProperties!.private!['petIds']!,
+                            );
+                            if (decoded is List) {
+                              associatedPetIds = List<String>.from(
+                                decoded.map((id) => id.toString()),
+                              );
+                              associatedPetNames = _getPetNamesFromIds(
+                                associatedPetIds,
+                              );
                             }
+                          } catch (e) {
+                            print(
+                              'Error al decodificar petIds para mostrar: $e',
+                            );
                           }
+                        }
 
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            color: AppColors.backgroundComponent,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event.summary ?? 'Sin título',
-                                    style: AppTextStyles.midText(
-                                      context,
-                                    ).copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          color: AppColors.backgroundComponent,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event.summary ?? 'Sin título',
+                                  style: AppTextStyles.midText(
+                                    context,
+                                  ).copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (event.description != null &&
+                                    event.description!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      event.description!,
+                                      style: AppTextStyles.midText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
                                     ),
                                   ),
-                                  if (event.description != null && event.description!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        event.description!,
-                                        style: AppTextStyles.midText(
-                                          context,
-                                        ).copyWith(color: AppColors.black),
+                                if (eventStartTime != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Inici: ${eventStartTime.toLocal().toString().substring(0, 16)}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
+                                    ),
+                                  ),
+                                if (eventEndTime != null &&
+                                    eventStartTime != eventEndTime)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Fi: ${eventEndTime.toLocal().toString().substring(0, 16)}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
+                                    ),
+                                  ),
+                                if (event.location != null &&
+                                    event.location!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      'Lloc: ${event.location!}',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(color: AppColors.black),
+                                    ),
+                                  ),
+                                // --- Mostrar mascotas asociadas ---
+                                if (associatedPetNames.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      'Mascotas: $associatedPetNames',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  if (eventStartTime != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Inici: ${eventStartTime.toLocal().toString().substring(0, 16)}',
-                                        style: AppTextStyles.tinyText(
-                                          context,
-                                        ).copyWith(color: AppColors.black),
-                                      ),
-                                    ),
-                                  if (eventEndTime != null &&
-                                      eventStartTime != eventEndTime)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Fi: ${eventEndTime.toLocal().toString().substring(0, 16)}',
-                                        style: AppTextStyles.tinyText(
-                                          context,
-                                        ).copyWith(color: AppColors.black),
-                                      ),
-                                    ),
-                                  if (event.location != null && event.location!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                        'Lloc: ${event.location!}',
-                                        style: AppTextStyles.tinyText(
-                                          context,
-                                        ).copyWith(color: AppColors.black),
-                                      ),
-                                    ),
-                                  // --- Mostrar mascotas asociadas ---
-                                  if (associatedPetNames.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        'Mascotas: $associatedPetNames',
-                                        style: AppTextStyles.tinyText(context).copyWith(
-                                          color: AppColors.accent,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  // --- Fin de mostrar mascotas asociadas ---
-                                ],
-                              ),
+                                  ),
+                                // --- Fin de mostrar mascotas asociadas ---
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -409,32 +453,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (_calendarService == null || _petTrackCalendarId == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Servicio de calendario no disponible. Intenta de nuevo más tarde.'),
+                content: Text(
+                  'Servicio de calendario no disponible. Intenta de nuevo más tarde.',
+                ),
                 backgroundColor: Colors.red,
               ),
             );
             return;
           }
           if (_availablePets.isEmpty) {
-             ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Cargando mascotas... Por favor, espera o añade una mascota primero.'),
+                content: Text(
+                  'Cargando mascotas... Por favor, espera o añade una mascota primero.',
+                ),
                 backgroundColor: Colors.orange,
               ),
             );
             return;
           }
 
-
           final result = await Navigator.push(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => AddEditTaskScreen(
-                initialSelectedDay: _selectedDay,
-                calendarService: _calendarService!,
-                petTrackCalendarId: _petTrackCalendarId!,
-                availablePets: _availablePets, // <-- ¡Pasando la lista de mascotas!
-              ),
+              pageBuilder:
+                  (_, __, ___) => AddEditTaskScreen(
+                    initialSelectedDay: _selectedDay,
+                    calendarService: _calendarService!,
+                    petTrackCalendarId: _petTrackCalendarId!,
+                    availablePets:
+                        _availablePets, // <-- ¡Pasando la lista de mascotas!
+                  ),
               transitionsBuilder: (_, animation, __, child) {
                 final offsetAnimation = Tween<Offset>(
                   begin: const Offset(0, 1),
