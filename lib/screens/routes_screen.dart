@@ -1,9 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/models/pets_db.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:pet_track/screens/tracking_screen.dart';
 
 class RoutesWithPetsScreen extends StatefulWidget {
   const RoutesWithPetsScreen({super.key});
@@ -207,6 +210,7 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                       top: 16,
                       right: 16,
                       child: FloatingActionButton(
+                        heroTag: null,
                         onPressed: _centerMapOnUser,
                         backgroundColor: AppColors.primary,
                         mini: true,
@@ -253,12 +257,57 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
                                       : AppColors.gradient,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Center(
-                              child: Text(
-                                'Iniciar ruta (${_selectedIds.length})',
-                                style: AppTextStyles.bigText(
-                                  context,
-                                ).copyWith(color: Colors.white),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap:
+                                  _selectedIds.isEmpty
+                                      ? null
+                                      : () async {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => TrackingScreen(
+                                                  petIds: _selectedIds.toList(),
+                                                ),
+                                          ),
+                                        );
+                                        print(
+                                          'Result from TrackingScreen: $result',
+                                        );
+                                        if (result != null && result is Map) {
+                                          for (final petId
+                                              in result['petIds']) {
+                                            final ref =
+                                                FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(
+                                                      FirebaseAuth
+                                                          .instance
+                                                          .currentUser!
+                                                          .uid,
+                                                    )
+                                                    .collection('pets')
+                                                    .doc(petId)
+                                                    .collection('routes')
+                                                    .doc();
+                                            await ref.set({
+                                              'startTime': result['startTime'],
+                                              'endTime': result['endTime'],
+                                              'distance': result['distance'],
+                                              'duration': result['duration'],
+                                              'path': result['path'],
+                                            });
+                                          }
+                                        }
+                                      },
+                              child: Center(
+                                child: Text(
+                                  'Iniciar ruta (${_selectedIds.length})',
+                                  style: AppTextStyles.bigText(
+                                    context,
+                                  ).copyWith(color: Colors.white),
+                                ),
                               ),
                             ),
                           ),
