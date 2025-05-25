@@ -33,28 +33,47 @@ class CalendarService {
 
   // Nuevo método: Comprobar y crear el calendario "PetTrack" si no existe
   Future<String?> ensurePetTrackCalendarExists() async {
-    final calendars = await getCalendarList();
-    final petTrackCalendar =
-        calendars.firstWhere((cal) => cal.summary == 'PetTrack', orElse: () => gcal.CalendarListEntry());
+    try {
+      // (1) Obtener la lista de calendarios. Asegurarse de que se está listando correctamente.
+      final calendarList = await _calendarApi.calendarList.list();
+      final List<gcal.CalendarListEntry> userCalendars = calendarList.items ?? [];
 
-    if (petTrackCalendar.id == null) {
-      // El calendario "PetTrack" no existe, crearlo
-      final newCalendar = gcal.Calendar()
-        ..summary = 'PetTrack'
-        ..timeZone = 'Europe/Madrid'; // Ajusta la zona horaria si es necesario
-      final createdCalendar = await createCalendar(newCalendar);
-      if (createdCalendar != null) {
-        print('Calendario "PetTrack" creado con ID: ${createdCalendar.id}');
-        return createdCalendar.id;
-      } else {
-        print('Error al crear el calendario "PetTrack".');
-        return null;
+      // (2) Buscar el calendario "PetTrack" de forma insensible a mayúsculas/minúsculas y espacios
+      gcal.CalendarListEntry? petTrackCalendar;
+      for (var cal in userCalendars) {
+        if (cal.summary != null && cal.summary!.trim().toLowerCase() == 'pettrack') {
+          petTrackCalendar = cal;
+          break;
+        }
       }
-    } else {
-      print('El calendario "PetTrack" ya existe con ID: ${petTrackCalendar.id}');
-      return petTrackCalendar.id;
+
+      if (petTrackCalendar != null && petTrackCalendar.id != null) {
+        // El calendario "PetTrack" ya existe
+        print('El calendario "PetTrack" ya existe con ID: ${petTrackCalendar.id}');
+        return petTrackCalendar.id;
+      } else {
+        // El calendario "PetTrack" no existe, crearlo
+        final newCalendar = gcal.Calendar()
+          ..summary = 'PetTrack'
+          ..description = 'Calendario para eventos relacionados con tus mascotas en PetTrack App.'
+          ..timeZone = 'Europe/Madrid'; // Ajusta la zona horaria si es necesario
+
+        final createdCalendar = await _calendarApi.calendars.insert(newCalendar);
+        if (createdCalendar != null && createdCalendar.id != null) {
+          print('Calendario "PetTrack" creado con ID: ${createdCalendar.id}');
+          return createdCalendar.id;
+        } else {
+          print('Error: El calendario "PetTrack" no se pudo crear o no devolvió un ID válido.');
+          return null;
+        }
+      }
+    } catch (e) {
+      print('Error en ensurePetTrackCalendarExists: $e');
+      // Puedes añadir un SnackBar o un logging más detallado aquí
+      return null;
     }
   }
+
 
   // Modificado: getEvents ahora recibe el calendarId
   Future<List<gcal.Event>> getEvents(String calendarId, DateTime startDate, DateTime endDate) async {

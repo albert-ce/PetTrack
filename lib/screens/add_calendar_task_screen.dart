@@ -1,0 +1,703 @@
+// En screens/add_calendar_task_screen.dart
+
+import 'dart:convert'; // Importa para json.encode y json.decode
+
+import 'package:flutter/material.dart';
+import 'package:pet_track/core/app_colors.dart';
+import 'package:pet_track/core/app_styles.dart';
+import 'package:googleapis/calendar/v3.dart' as gcal;
+import 'package:pet_track/services/calendar_service.dart';
+import 'package:intl/intl.dart'; // Para formatear fechas y horas
+
+class AddEditTaskScreen extends StatefulWidget {
+  final gcal.Event? taskData;
+  final DateTime? initialSelectedDay;
+  final CalendarService calendarService;
+  final String petTrackCalendarId;
+  final List<Map<String, dynamic>> availablePets; // <-- ¡Nuevo parámetro!
+
+  const AddEditTaskScreen({
+    super.key,
+    this.taskData,
+    this.initialSelectedDay,
+    required this.calendarService,
+    required this.petTrackCalendarId,
+    required this.availablePets, // ¡Ahora requerido!
+  });
+
+  @override
+  State<AddEditTaskScreen> createState() => _AddEditTaskScreenState();
+}
+
+class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _startTimeController = TextEditingController();
+  final TextEditingController _endTimeController = TextEditingController();
+
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
+  bool _isAllDay = false;
+
+  // Acceso a los servicios a través de widget.calendarService y widget.petTrackCalendarId
+  CalendarService get _calendarService => widget.calendarService;
+  String get _petTrackCalendarId => widget.petTrackCalendarId;
+
+  List<String> _selectedPetIds = []; // IDs de las mascotas seleccionadas
+
+  bool get _editant => widget.taskData != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (_editant) {
+      final task = widget.taskData!;
+      _titleController.text = task.summary ?? '';
+      _descriptionController.text = task.description ?? '';
+
+      _isAllDay = task.start?.date != null && task.start?.dateTime == null;
+
+      if (task.start?.dateTime != null) {
+        _selectedDate = task.start!.dateTime!.toLocal();
+        _selectedStartTime = TimeOfDay.fromDateTime(_selectedDate!);
+      } else if (task.start?.date != null) {
+        // Para eventos de todo el día, la fecha de inicio es solo la fecha
+        _selectedDate = task.start!.date!;
+      }
+
+      if (task.end?.dateTime != null) {
+        _selectedEndTime = TimeOfDay.fromDateTime(
+          task.end!.dateTime!.toLocal(),
+        );
+      }
+
+      if (_selectedDate != null) {
+        _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+      }
+
+      // Cargar IDs de mascotas asociadas si existen
+      // CORRECCIÓN: 'privateProperty' a 'private'
+      if (task.extendedProperties?.private?['petIds'] != null) {
+        try {
+          final decoded = json.decode(
+            task.extendedProperties!.private!['petIds']!,
+          );
+          if (decoded is List) {
+            _selectedPetIds = List<String>.from(
+              decoded.map((id) => id.toString()),
+            );
+          }
+        } catch (e) {
+          print('Error al decodificar petIds de extendedProperties: $e');
+        }
+      }
+    } else {
+      // Si es una nueva tarea, usa el día inicial pasado o el día actual
+      _selectedDate = widget.initialSelectedDay ?? DateTime.now();
+      _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+      // Establece horas predeterminadas para nuevas tareas
+      _selectedStartTime = TimeOfDay.now();
+      _selectedEndTime = TimeOfDay.fromDateTime(
+        DateTime.now().add(const Duration(hours: 1)),
+      );
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_selectedStartTime != null && _startTimeController.text.isEmpty) {
+      _startTimeController.text = _selectedStartTime!.format(context);
+    }
+    if (_selectedEndTime != null &&
+        _endTimeController.text.isEmpty &&
+        !_isAllDay) {
+      _endTimeController.text = _selectedEndTime!.format(context);
+    }
+  }
+
+  // --- Selectores de Fecha y Hora ---
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+      });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime:
+          isStartTime
+              ? (_selectedStartTime ?? TimeOfDay.now())
+              : (_selectedEndTime ?? TimeOfDay.now()),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _selectedStartTime = picked;
+          _startTimeController.text = _selectedStartTime!.format(context);
+        } else {
+          _selectedEndTime = picked;
+          _endTimeController.text = _selectedEndTime!.format(context);
+        }
+      });
+    }
+  }
+
+  // --- Lógica de Guardar Tarea ---
+  Future<void> _saveTask() async {
+    if (_petTrackCalendarId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: ID del calendario no disponible.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El título de la tarea no puede estar vacío.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes seleccionar una fecha para la tarea.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    gcal.Event newEvent = gcal.Event();
+    newEvent.summary = _titleController.text.trim();
+    newEvent.description = _descriptionController.text.trim();
+
+    if (_isAllDay) {
+      newEvent.start = gcal.EventDateTime(date: _selectedDate);
+      newEvent.end = gcal.EventDateTime(
+        date: _selectedDate!.add(const Duration(days: 1)),
+      );
+    } else {
+      if (_selectedStartTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Debes seleccionar una hora de inicio para la tarea.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      DateTime startDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedStartTime!.hour,
+        _selectedStartTime!.minute,
+      );
+
+      DateTime endDateTime;
+      if (_selectedEndTime != null) {
+        endDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedEndTime!.hour,
+          _selectedEndTime!.minute,
+        );
+        if (endDateTime.isBefore(startDateTime)) {
+          endDateTime = endDateTime.add(const Duration(days: 1));
+        }
+      } else {
+        endDateTime = startDateTime.add(const Duration(hours: 1));
+      }
+
+      newEvent.start = gcal.EventDateTime(dateTime: startDateTime.toUtc());
+      newEvent.end = gcal.EventDateTime(dateTime: endDateTime.toUtc());
+    }
+
+    // --- ¡AÑADE ESTO PARA GUARDAR LOS IDs DE LAS MASCOTAS! ---
+    if (_selectedPetIds.isNotEmpty) {
+      newEvent.extendedProperties = gcal.EventExtendedProperties(
+        // CORRECCIÓN: 'privateProperty' a 'private'
+        private: {
+          'petIds': json.encode(
+            _selectedPetIds,
+          ), // Guarda los IDs como un JSON string
+        },
+      );
+    }
+    // --- FIN DE LA ADICIÓN ---
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(color: AppColors.accent),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(
+                    _editant ? 'Guardando tarea...' : 'Añadiendo tarea...',
+                    style: AppTextStyles.midText(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+
+    try {
+      gcal.Event? resultEvent;
+      if (_editant) {
+        resultEvent = await _calendarService.updateEvent(
+          _petTrackCalendarId,
+          widget.taskData!.id!,
+          newEvent,
+        );
+      } else {
+        resultEvent = await _calendarService.createEvent(
+          _petTrackCalendarId,
+          newEvent,
+        );
+      }
+
+      if (mounted) {
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pop(); // Cierra el diálogo de carga
+      }
+
+      if (resultEvent != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _editant
+                  ? 'Tarea "${resultEvent.summary}" actualizada con éxito.'
+                  : 'Tarea "${resultEvent.summary}" añadida con éxito.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(
+          context,
+          true,
+        ); // Vuelve a la pantalla anterior indicando éxito
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al guardar la tarea.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pop(); // Cierra el diálogo de carga
+      }
+      print('Error al guardar la tarea: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar la tarea: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // --- Lógica de Eliminar Tarea ---
+  Future<void> _deleteTask() async {
+    if (_petTrackCalendarId.isEmpty || widget.taskData?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: No se puede eliminar la tarea.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Eliminar tarea'),
+            content: const Text('¿Seguro que quieres eliminar esta tarea?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Eliminar',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (res == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              content: Row(
+                children: [
+                  const CircularProgressIndicator(color: AppColors.accent),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Text(
+                      'Eliminando tarea...',
+                      style: AppTextStyles.midText(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      );
+      try {
+        await _calendarService.deleteEvent(
+          _petTrackCalendarId,
+          widget.taskData!.id!,
+        );
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tarea eliminada con éxito.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, {'deleted': true, 'id': widget.taskData!.id});
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
+        }
+        print('Error al eliminar la tarea: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar la tarea: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final theme = Theme.of(context);
+    final inputDecorationTheme = theme.inputDecorationTheme.copyWith(
+      labelStyle: const TextStyle(color: AppColors.primary),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: AppColors.primary),
+      ),
+    );
+
+    return Theme(
+      data: theme.copyWith(
+        inputDecorationTheme: inputDecorationTheme,
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: AppColors.primary,
+          selectionColor: AppColors.primary.withAlpha((255 * 0.4).toInt()),
+          selectionHandleColor: AppColors.primary,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          title: Text(
+            _editant ? 'Editar Tarea' : 'Añadir Tarea',
+            style: AppTextStyles.titleText(context),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(screenHeight * 0.008),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Título de la tarea',
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.008),
+                TextField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción (opcional)',
+                  ),
+                  maxLines: 3,
+                  keyboardType: TextInputType.multiline,
+                ),
+                SizedBox(height: screenHeight * 0.025),
+
+                GestureDetector(
+                  onTap: () => _selectDate(context),
+                  child: AbsorbPointer(
+                    child: TextField(
+                      controller: _dateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Fecha',
+                        suffixIcon: Icon(
+                          Icons.calendar_today,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.0125),
+
+                Row(
+                  children: [
+                    Text('Todo el día:', style: AppTextStyles.midText(context)),
+                    const Spacer(),
+                    Switch(
+                      value: _isAllDay,
+                      onChanged: (value) {
+                        setState(() {
+                          _isAllDay = value;
+                          if (_isAllDay) {
+                            _selectedStartTime = null;
+                            _selectedEndTime = null;
+                            _startTimeController.clear();
+                            _endTimeController.clear();
+                          } else {
+                            _selectedStartTime = TimeOfDay.now();
+                            _selectedEndTime = TimeOfDay.fromDateTime(
+                              DateTime.now().add(const Duration(hours: 1)),
+                            );
+                            _startTimeController.text = _selectedStartTime!
+                                .format(context);
+                            _endTimeController.text = _selectedEndTime!.format(
+                              context,
+                            );
+                          }
+                        });
+                      },
+                      activeColor: AppColors.primary,
+                      inactiveTrackColor: AppColors.backgroundComponent,
+                    ),
+                  ],
+                ),
+                SizedBox(height: screenHeight * 0.0125),
+
+                if (!_isAllDay) ...[
+                  GestureDetector(
+                    onTap: () => _selectTime(context, true),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _startTimeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Hora de inicio',
+                          suffixIcon: Icon(
+                            Icons.access_time,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.008),
+                  GestureDetector(
+                    onTap: () => _selectTime(context, false),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _endTimeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Hora de finalización (opcional)',
+                          suffixIcon: Icon(
+                            Icons.access_time,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                ],
+
+                // --- Sección para seleccionar mascotas ---
+                Text(
+                  'Mascotas Asociadas:',
+                  style: AppTextStyles.midText(context),
+                ),
+                SizedBox(height: screenHeight * 0.0125),
+                widget.availablePets.isEmpty
+                    ? Text(
+                      'No hay mascotas disponibles.',
+                      style: AppTextStyles.tinyText(
+                        context,
+                      ).copyWith(color: AppColors.black),
+                    )
+                    : Wrap(
+                      spacing: 8.0, // Espacio entre chips
+                      runSpacing: 4.0, // Espacio entre líneas de chips
+                      children:
+                          widget.availablePets.map((pet) {
+                            final petId = pet['id'] as String;
+                            final petName = pet['name'] as String;
+                            final isSelected = _selectedPetIds.contains(petId);
+
+                            return FilterChip(
+                              label: Text(petName),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedPetIds.add(petId);
+                                  } else {
+                                    _selectedPetIds.remove(petId);
+                                  }
+                                });
+                              },
+                              selectedColor: AppColors.primary.withOpacity(0.8),
+                              checkmarkColor: Colors.white,
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                              ),
+                              backgroundColor: AppColors.backgroundComponent,
+                            );
+                          }).toList(),
+                    ),
+                SizedBox(height: screenHeight * 0.02),
+
+                // --- Fin de la sección de selección de mascotas ---
+                Material(
+                  borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradient,
+                      borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                      onTap: _saveTask,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.02,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _editant ? 'Guardar Cambios' : 'Añadir Tarea',
+                            style: AppTextStyles.bigText(context).copyWith(
+                              color: Colors.white,
+                              fontSize: screenHeight * 0.03,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_editant) ...[
+                  SizedBox(height: screenHeight * 0.02),
+                  Material(
+                    borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(
+                          screenHeight * 0.015,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(
+                          screenHeight * 0.015,
+                        ),
+                        onTap: _deleteTask,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenHeight * 0.02,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Eliminar Tarea',
+                              style: AppTextStyles.bigText(context).copyWith(
+                                color: Colors.white,
+                                fontSize: screenHeight * 0.03,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
