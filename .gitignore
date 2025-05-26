@@ -101,3 +101,7 @@ macos/firebase_app_id_file.json
 **/linux/flutter/generated_plugin_registrant.cc
 **/linux/flutter/generated_plugin_registrant.h
 **/linux/flutter/generated_plugins.cmake
+
+
+key.properties
+android/key.properties
