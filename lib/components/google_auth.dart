@@ -8,21 +8,18 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ¡Importante! Aquí se definen todos los scopes que tu aplicación necesitará.
-  // calendarAppCreatedScope para tu calendario específico.
-  // openid y email son estándares para obtener la identidad y el email del usuario.
   final List<String> _googleCalendarScopes = [
     'openid',
     'email',
-    gcal
-        .CalendarApi
-        .calendarAppCreatedScope, // El scope para el calendario de la app
+    // ANTES: gcal.CalendarApi.calendarAppCreatedScope, // Este solo es para calendarios creados por la app
+    // AHORA: Usa el scope completo para lectura y escritura en el calendario del usuario
+    gcal.CalendarApi.calendarScope, // <-- ¡CAMBIO CRÍTICO AQUÍ!
   ];
 
   late final GoogleSignIn _googleSignIn;
 
   AuthService() {
     // Inicializa GoogleSignIn con TODOS los scopes necesarios.
-    // Esto es lo que le pide a Google los permisos al usuario.
     _googleSignIn = GoogleSignIn(scopes: _googleCalendarScopes);
   }
 

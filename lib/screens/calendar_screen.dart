@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pet_track/components/google_auth.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
+import 'package:pet_track/models/pets_db.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
-import 'package:googleapis_auth/auth_io.dart'; // Importa para AuthClient
-import 'package:pet_track/services/calendar_service.dart'; // Asegúrate de que la ruta sea correcta
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:pet_track/services/calendar_service.dart';
+import 'package:pet_track/screens/add_calendar_task_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -22,167 +25,167 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late final AuthService _authService;
   CalendarService? _calendarService;
   String? _petTrackCalendarId;
+  Map<DateTime, List<gcal.Event>> _events = {};
   List<gcal.Event> _selectedEvents = [];
   bool _isLoadingEvents = true;
+
+  Future<List<Map<String, dynamic>>>? _petsFuture;
+  List<Map<String, dynamic>> _availablePets = [];
 
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('ca_ES', null);
-    _selectedDay = _focusedDay; // Inicializa _selectedDay al día actual
+    _selectedDay = _focusedDay;
     _authService = AuthService();
-    _initializeCalendarService();
+    _loadAllInitialData();
   }
 
-  Future<void> _initializeCalendarService() async {
+  Future<void> _loadAllInitialData() async {
+    try {
+      _petsFuture = getPets();
+      _availablePets = await _petsFuture!;
+      print('Mascotas cargadas: ${_availablePets.length}');
+    } catch (e) {
+      print('Error al cargar mascotas: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar las mascotas: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
     final AuthClient? client = await _authService.getAuthenticatedClient();
     if (client != null) {
       _calendarService = CalendarService(client);
       _petTrackCalendarId =
           await _calendarService!.ensurePetTrackCalendarExists();
       if (_petTrackCalendarId != null) {
-        _getEventsForSelectedDay(_selectedDay!);
+        await _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
       } else {
         setState(() {
-          _isLoadingEvents =
-              false; // Detener la carga si el calendario no se pudo obtener/crear
+          _isLoadingEvents = false;
         });
         print('No se pudo obtener o crear el calendario PetTrack.');
       }
     } else {
       setState(() {
-        _isLoadingEvents =
-            false; // Detener la carga si el cliente de autenticación es nulo
+        _isLoadingEvents = false;
       });
       print('No se pudo obtener el cliente autenticado.');
     }
   }
 
-  Future<void> _getEventsForSelectedDay(DateTime day) async {
+  Future<void> _fetchEventsForVisibleRange(
+    DateTime focusedDay,
+    CalendarFormat format,
+  ) async {
     if (_calendarService == null || _petTrackCalendarId == null) {
       setState(() {
-        _selectedEvents = [];
         _isLoadingEvents = false;
+        _events = {};
+        _selectedEvents = [];
       });
       return;
     }
 
     setState(() {
       _isLoadingEvents = true;
-      _selectedEvents = []; // Limpia eventos anteriores antes de cargar nuevos
+      _events = {};
+      _selectedEvents = [];
     });
 
     try {
-      // Obtener el inicio y fin del día seleccionado
-      final DateTime startOfDay = DateTime(
-        day.year,
-        day.month,
-        day.day,
-        0,
-        0,
-        0,
-      );
-      final DateTime endOfDay = DateTime(
-        day.year,
-        day.month,
-        day.day,
-        23,
-        59,
-        59,
+      DateTime rangeStart;
+      DateTime rangeEnd;
+
+      if (format == CalendarFormat.month) {
+        rangeStart = DateTime.utc(focusedDay.year, focusedDay.month, 1);
+        rangeEnd = DateTime.utc(
+          focusedDay.year,
+          focusedDay.month + 1,
+          0,
+          23,
+          59,
+          59,
+        );
+      } else {
+        rangeStart = focusedDay.subtract(
+          Duration(days: focusedDay.weekday - 1),
+        );
+        rangeStart = DateTime.utc(
+          rangeStart.year,
+          rangeStart.month,
+          rangeStart.day,
+        );
+        rangeEnd = rangeStart.add(Duration(days: 6));
+        rangeEnd = DateTime.utc(
+          rangeEnd.year,
+          rangeEnd.month,
+          rangeEnd.day,
+          23,
+          59,
+          59,
+        );
+      }
+
+      final fetchedEvents = await _calendarService!.getEvents(
+        _petTrackCalendarId!,
+        rangeStart,
+        rangeEnd,
       );
 
-      final events = await _calendarService!.getEvents(
-        _petTrackCalendarId!,
-        startOfDay,
-        endOfDay,
-      );
+      final Map<DateTime, List<gcal.Event>> newEventsMap = {};
+      for (var event in fetchedEvents) {
+        final eventDay = DateTime.utc(
+          (event.start?.dateTime ?? event.start?.date)?.year ?? 0,
+          (event.start?.dateTime ?? event.start?.date)?.month ?? 0,
+          (event.start?.dateTime ?? event.start?.date)?.day ?? 0,
+        );
+        if (eventDay.year != 0) {
+          if (newEventsMap[eventDay] == null) {
+            newEventsMap[eventDay] = [];
+          }
+          newEventsMap[eventDay]!.add(event);
+        }
+      }
+
       setState(() {
-        _selectedEvents = events;
+        _events = newEventsMap;
+        _selectedEvents = _getEventsForDay(_selectedDay!);
         _isLoadingEvents = false;
       });
     } catch (e) {
-      print('Error al obtener eventos para el día seleccionado: $e');
+      print('Error al obtener eventos para el rango visible: $e');
       setState(() {
-        _selectedEvents = [];
         _isLoadingEvents = false;
+        _events = {};
+        _selectedEvents = [];
       });
     }
   }
 
-  // Nuevo método para añadir un evento de prueba
-  Future<void> _addTestEvent() async {
-    if (_calendarService == null ||
-        _petTrackCalendarId == null ||
-        _selectedDay == null) {
-      // Mostrar un mensaje al usuario si el servicio no está listo o no hay día seleccionado
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: Servicio de calendario no disponible o día no seleccionado.',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  List<gcal.Event> _getEventsForDay(DateTime day) {
+    final normalizedDay = DateTime.utc(day.year, day.month, day.day);
+    return _events[normalizedDay] ?? [];
+  }
 
-    // Crear un evento de prueba
-    final DateTime eventStart = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-      10, // Hora de inicio: 10:00 AM
-      0,
-    );
-    final DateTime eventEnd = eventStart.add(
-      Duration(hours: 1),
-    ); // Duración: 1 hora
-
-    final gcal.Event newEvent = gcal.Event(
-      summary: 'Evento de Prueba PetTrack',
-      description: 'Este es un evento de prueba añadido desde la app.',
-      start: gcal.EventDateTime(
-        dateTime: eventStart.toUtc(),
-      ), // Importante: a UTC
-      end: gcal.EventDateTime(dateTime: eventEnd.toUtc()), // Importante: a UTC
-      location: 'Mi ubicación',
-    );
-
-    try {
-      final createdEvent = await _calendarService!.createEvent(
-        _petTrackCalendarId!,
-        newEvent,
-      );
-
-      if (createdEvent != null) {
-        print('Evento creado con éxito: ${createdEvent.summary}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Evento "${createdEvent.summary}" añadido con éxito.',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Refrescar la lista de eventos para el día seleccionado
-        _getEventsForSelectedDay(_selectedDay!);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al añadir el evento.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error al crear el evento: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al añadir el evento: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  // Función para obtener los nombres de las mascotas a partir de sus IDs
+  String _getPetNamesFromIds(List<String> petIds) {
+    if (petIds.isEmpty) return '';
+    final names =
+        petIds.map((id) {
+          final pet = _availablePets.firstWhere(
+            (p) => p['id'] == id,
+            orElse:
+                () => {
+                  'name': 'Mascota Desconocida',
+                }, // Manejo si no se encuentra
+          );
+          return pet['name'] as String;
+        }).toList();
+    return names.join(', ');
   }
 
   @override
@@ -209,6 +212,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     setState(() {
                       _calendarFormat = CalendarFormat.month;
                     });
+                    _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
                   },
                   child: Text(
                     'Mes',
@@ -231,6 +235,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     setState(() {
                       _calendarFormat = CalendarFormat.week;
                     });
+                    _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
                   },
                   child: Text(
                     'Setmana',
@@ -252,10 +257,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
               setState(() {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
+                _selectedEvents = _getEventsForDay(selectedDay);
               });
-              _getEventsForSelectedDay(
-                selectedDay,
-              ); // Carga eventos para el nuevo día seleccionado
+            },
+            onPageChanged: (focusedDay) {
+              _focusedDay = focusedDay;
+              _fetchEventsForVisibleRange(focusedDay, _calendarFormat);
             },
             headerStyle: HeaderStyle(
               titleCentered: true,
@@ -281,9 +288,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 shape: BoxShape.circle,
               ),
               todayTextStyle: TextStyle(color: Colors.black),
+              markerDecoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              markerSize: 5.0,
+              markersAutoAligned: false,
+              markersMaxCount: 1,
             ),
+            eventLoader: _getEventsForDay,
           ),
-          // --- Sección de eventos ---
           const Divider(),
           Expanded(
             child:
@@ -308,11 +322,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       itemCount: _selectedEvents.length,
                       itemBuilder: (context, index) {
                         final event = _selectedEvents[index];
-                        // Asegúrate de manejar los eventos que podrían no tener start o end
                         final eventStartTime =
                             event.start?.dateTime ?? event.start?.date;
                         final eventEndTime =
                             event.end?.dateTime ?? event.end?.date;
+
+                        List<String> associatedPetIds = [];
+                        String associatedPetNames = '';
+                        if (event.extendedProperties?.private?['petIds'] !=
+                            null) {
+                          try {
+                            final decoded = json.decode(
+                              event.extendedProperties!.private!['petIds']!,
+                            );
+                            if (decoded is List) {
+                              associatedPetIds = List<String>.from(
+                                decoded.map((id) => id.toString()),
+                              );
+                              associatedPetNames = _getPetNamesFromIds(
+                                associatedPetIds,
+                              );
+                            }
+                          } catch (e) {
+                            print(
+                              'Error al decodificar petIds para mostrar: $e',
+                            );
+                          }
+                        }
 
                         return Card(
                           margin: const EdgeInsets.symmetric(
@@ -334,16 +370,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                if (event.description != null)
+                                if (event.description != null &&
+                                    event.description!.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4.0),
                                     child: Text(
                                       event.description!,
                                       style: AppTextStyles.midText(
                                         context,
-                                      ).copyWith(
-                                        color: AppColors.black,
-                                      ),
+                                      ).copyWith(color: AppColors.black),
                                     ),
                                   ),
                                 if (eventStartTime != null)
@@ -367,7 +402,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ).copyWith(color: AppColors.black),
                                     ),
                                   ),
-                                if (event.location != null)
+                                if (event.location != null &&
+                                    event.location!.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4.0),
                                     child: Text(
@@ -377,6 +413,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ).copyWith(color: AppColors.black),
                                     ),
                                   ),
+                                // --- Mostrar mascotas asociadas ---
+                                if (associatedPetNames.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      'Mascotas: $associatedPetNames',
+                                      style: AppTextStyles.tinyText(
+                                        context,
+                                      ).copyWith(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                // --- Fin de mostrar mascotas asociadas ---
                               ],
                             ),
                           ),
@@ -387,7 +438,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addTestEvent, // Llama al nuevo método para añadir un evento
+        onPressed: () async {
+          if (_calendarService == null || _petTrackCalendarId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Servicio de calendario no disponible. Intenta de nuevo más tarde.',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+          final result = await Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder:
+                  (_, __, ___) => AddEditTaskScreen(
+                    initialSelectedDay: _selectedDay,
+                    calendarService: _calendarService!,
+                    petTrackCalendarId: _petTrackCalendarId!,
+                    availablePets: _availablePets,
+                  ),
+              transitionsBuilder: (_, animation, __, child) {
+                final offsetAnimation = Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(animation);
+                return SlideTransition(position: offsetAnimation, child: child);
+              },
+            ),
+          );
+
+          if (result == true) {
+            _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
+          }
+        },
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Ink(
