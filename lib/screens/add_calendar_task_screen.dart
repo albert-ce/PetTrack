@@ -4,7 +4,7 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:pet_track/services/calendar_service.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 
 class AddEditTaskScreen extends StatefulWidget {
   final gcal.Event? taskData;
@@ -41,7 +41,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   CalendarService get _calendarService => widget.calendarService;
   String get _petTrackCalendarId => widget.petTrackCalendarId;
 
-  List<String> _selectedPetIds = []; 
+  List<String> _selectedPetIds = [];
 
   bool get _editant => widget.taskData != null;
 
@@ -318,7 +318,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
             content: Text(
               _editant
                   ? 'Tasca "${resultEvent.summary}" actualizada amb éxit.'
-                  : 'Tasca "${resultEvent.summary}" afegida con éxit.',
+                  : 'Tasca "${resultEvent.summary}" afegida amb éxit.',
             ),
             backgroundColor: Colors.green,
           ),
