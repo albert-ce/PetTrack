@@ -11,7 +11,7 @@ class FCMService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<void> initForCurrentUser() async {
-    await _messaging.requestPermission(); // Android 13+ / iOS
+    await _messaging.requestPermission();
     final token = await _messaging.getToken();
     await _persistToken(token);
     _messaging.onTokenRefresh.listen(_persistToken);

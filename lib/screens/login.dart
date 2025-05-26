@@ -5,7 +5,7 @@ import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/screens/home_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pet_track/services/fcm_service.dart'; // ➊ NUEVA LÍNEA
+import 'package:pet_track/services/fcm_service.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -37,25 +37,20 @@ class LoginScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   onTap: () async {
                     try {
-                      // 1) Google Sign-In
                       final account = await googleSignIn.signIn();
                       if (account == null) return;
 
-                      // 2) Tokens de Google
                       final auth = await account.authentication;
                       final googleIdToken = auth.idToken;
                       if (googleIdToken == null) {
                         throw Exception('No se obtuvo ID token de Google');
                       }
 
-                      // 3) Firebase Auth
                       final firebaseIdToken =
                           await AuthService().signInWithGoogle();
 
-                      // 4)  REGISTRA TOKEN FCM
                       await FCMService.instance.initForCurrentUser();
 
-                      // 5) Llamada opcional a tu Cloud Function
                       final response = await callCloudFunction(
                         functionName: 'get_pets',
                         firebaseIdToken: firebaseIdToken,
