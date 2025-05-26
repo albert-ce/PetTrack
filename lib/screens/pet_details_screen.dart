@@ -1,10 +1,15 @@
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:pet_track/components/app_bar.dart';
-import 'package:pet_track/components/info_card.dart';
+import 'package:pet_track/components/feed_button.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/screens/add_edit_pet_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
@@ -16,12 +21,107 @@ class PetDetailsScreen extends StatefulWidget {
 }
 
 class _PetDetailsScreenState extends State<PetDetailsScreen> {
-  late Map<String, dynamic> pet; // copia mutable de la mascota
+  late Map<String, dynamic> pet;
+  late int _dailyFeedCount;
+  late int _dailyFeedGoal;
+  late DateTime _lastFed;
+  late String _caracteristiques;
 
   @override
   void initState() {
     super.initState();
     pet = Map<String, dynamic>.from(widget.petData);
+    _dailyFeedCount = pet['dailyFeedCount'];
+    _dailyFeedGoal = pet['dailyFeedGoal'] ?? 3;
+    _lastFed =
+        pet['lastFed'] is Timestamp
+            ? (pet['lastFed'] as Timestamp).toDate()
+            : DateTime(2025, 1, 1);
+    _caracteristiques = 'Carregant...';
+
+    _obtenirCaracteristiques().then((value) {
+      if (!mounted) return;
+      setState(() => _caracteristiques = value);
+    });
+  }
+
+  String _formatCaracteristiques(String text) {
+    if (!text.contains(',')) return text;
+    return text.split(',').map((c) => '• ${c.trim()}').join('\n');
+  }
+
+  void _updateFeed(bool add) {
+    setState(() {
+      _dailyFeedCount =
+          add
+              ? (_dailyFeedCount + 1).clamp(0, _dailyFeedGoal)
+              : (_dailyFeedCount - 1).clamp(0, _dailyFeedGoal);
+      if (add) _lastFed = DateTime.now();
+    });
+    final user = FirebaseAuth.instance.currentUser;
+    final updateData = <String, dynamic>{
+      'dailyFeedCount': _dailyFeedCount,
+      if (add) 'lastFed': Timestamp.fromDate(_lastFed),
+    };
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(user!.uid)
+        .collection('pets')
+        .doc(pet['id'])
+        .update(updateData);
+  }
+
+  Future<String> _obtenirCaracteristiques() async {
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null) return 'Característiques desconegudes';
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=$apiKey',
+    );
+    final species = pet['species'] ?? 'Desconegut';
+    final breed = pet['breed'] ?? 'Desconeguda';
+    final sex = pet['sex'] ?? 'Desconegut';
+
+    String edat;
+    if (pet['birthDate'] is Timestamp) {
+      final bd = (pet['birthDate'] as Timestamp).toDate();
+      final months = DateTime.now().difference(bd).inDays ~/ 30;
+      edat = '$months mesos';
+    } else {
+      edat = 'Desconeguda';
+    }
+
+    final prompt = '''
+Ets un expert veterinari. Basant-te en la següent informació, dóna'm exclusivament 3 o 4 característiques clau de l'animal (mida, nivell d'energia, personalitat, necessitats, etc.). Escriu-les separades per comes, en una sola línia, sense cap altre text ni puntuació extra, i fes que cada característica comenci en majúscula.
+Espècie: $species
+Raça: $breed
+Edat: $edat
+Sexe: $sex
+Si no ho saps, respon exactament així: Característiques desconegudes''';
+
+    final body = jsonEncode({
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt},
+          ],
+        },
+      ],
+    });
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      if (res.statusCode == 200) {
+        final jsonResp = jsonDecode(res.body);
+        final text =
+            jsonResp['candidates']?[0]?['content']?['parts']?[0]?['text'];
+        if (text != null && text.trim().isNotEmpty) return text.trim();
+      }
+    } catch (_) {}
+    return 'Característiques desconegudes';
   }
 
   @override
@@ -29,10 +129,16 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     final screenH = MediaQuery.of(context).size.height;
     final screenW = MediaQuery.of(context).size.width;
 
-    // ────────── Dades bàsiques ──────────
     final name = pet['name'] ?? 'Mascota';
     final breed = pet['breed'] ?? 'Raça desconeguda';
     final species = pet['species'] ?? 'Espècie desconeguda';
+    final sex =
+        pet['sex'] == 'M'
+            ? 'Mascle'
+            : pet['sex'] == 'F'
+            ? 'Femella'
+            : 'Desconegut';
+
     final bd =
         pet['birthDate'] is Timestamp
             ? (pet['birthDate'] as Timestamp).toDate()
@@ -52,7 +158,20 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             }()
             : '';
 
-    final String? imageUrl = pet['imageUrl'];
+    final lastWalkStart =
+        pet['lastWalkStart'] is Timestamp
+            ? (pet['lastWalkStart'] as Timestamp).toDate()
+            : null;
+    final lastWalkEnd =
+        pet['lastWalkEnd'] is Timestamp
+            ? (pet['lastWalkEnd'] as Timestamp).toDate()
+            : null;
+    final lastWalkText =
+        (lastWalkStart != null && lastWalkEnd != null)
+            ? '${DateFormat.Hm().format(lastWalkStart)} - ${DateFormat.Hm().format(lastWalkEnd)}'
+            : '12:00 - 12:30';
+
+    final imageUrl = pet['imageUrl'];
     if (imageUrl != null && imageUrl.isNotEmpty) {
       imageCache.evict(NetworkImage(imageUrl), includeLive: true);
     }
@@ -61,37 +180,6 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             ? NetworkImage(imageUrl)
             : AssetImage('assets/images/$species.png');
 
-    // ────────── Menjars i passeigs ────────── DESMUTEIG QUAN TINGUEM BE BD
-    int? mealsDone;
-    final m = pet['meals'];
-    if (m is int) mealsDone = m;
-    if (m is List) mealsDone = m.length;
-
-    // final mealsGoal =
-    //     pet['mealsGoal'] ?? pet['mealsTarget'] ?? pet['feedTarget'];
-
-    final feedText = '$mealsDone menjars';
-    // (mealsDone != null && mealsGoal != null)
-    //     ? '$mealsDone / $mealsGoal menjades'
-    //     : (mealsDone != null
-    //         ? '$mealsDone menjades'
-    //         : 'Menjars no assignats');
-
-    // int? walksDone;
-    final w = pet['walks'];
-    // if (w is int) walksDone = w;
-    // if (w is List) walksDone = w.length;
-
-    // final walksGoal =
-    //     pet['walksGoal'] ?? pet['walksTarget'] ?? pet['walkTarget'];
-    final walkText = '$w passeigs';
-    // (walksDone != null && walksGoal != null)
-    //     ? '$walksDone / $walksGoal'
-    //     : (walksDone != null
-    //         ? '$walksDone passeigs'
-    //         : 'Passeigs no registrats');
-
-    // ────────── UI ──────────
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBarWidget(
@@ -108,12 +196,10 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 ),
               );
               if (!mounted || updatedPet == null) return;
-
               if (updatedPet['deleted'] == true) {
                 Navigator.pop(context, true);
                 return;
               }
-
               setState(() => pet = updatedPet);
             },
           ),
@@ -150,14 +236,13 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                         const SizedBox(height: 2),
                         Text(ageText, style: AppTextStyles.tinyText(context)),
                       ],
+                      Text(sex, style: AppTextStyles.tinyText(context)),
                     ],
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -171,62 +256,46 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
-            IntrinsicHeight(
+            Center(
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: InfoCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Alimentació',
-                            style: AppTextStyles.titleText(context),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(feedText, style: AppTextStyles.midText(context)),
-                        ],
-                      ),
-                    ),
+                  FeedButton(
+                    size: screenW * .35,
+                    dailyFeedCount: _dailyFeedCount,
+                    dailyFeedGoal: _dailyFeedGoal,
+                    lastFed: _lastFed,
+                    onFeed: _updateFeed,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: InfoCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Passeigs',
-                            style: AppTextStyles.titleText(context),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(walkText, style: AppTextStyles.midText(context)),
-                        ],
+                  const SizedBox(width: 24),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Últim passeig:',
+                        style: AppTextStyles.midText(context),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(lastWalkText, style: AppTextStyles.bigText(context)),
+                    ],
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            Container(
-              width: double.infinity,
-              height: screenH * .20,
-              decoration: BoxDecoration(
-                color: AppColors.backgroundComponent,
-                borderRadius: BorderRadius.circular(16),
+            const SizedBox(height: 26),
+            Center(
+              child: Text(
+                "Característiques:",
+                style: AppTextStyles.bigText(context),
               ),
-              child: const Center(
-                child: Text(
-                  'Gràfic / activitat',
-                  style: TextStyle(color: Colors.grey),
-                ),
+            ),
+            Center(
+              child: Text(
+                _formatCaracteristiques(_caracteristiques),
+                textAlign: TextAlign.left,
+                style: AppTextStyles.midText(context),
               ),
             ),
           ],
