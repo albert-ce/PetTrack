@@ -332,6 +332,24 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
                                 _nextEvent!.summary ?? 'Esdeveniment',
                                 style: AppTextStyles.midText(context),
                               ),
+                              const SizedBox(width: 8),
+                              if ((_nextEvent!.start?.dateTime ??
+                                      _nextEvent!.start?.date) !=
+                                  null)
+                                Text(
+                                  (() {
+                                    final start =
+                                        (_nextEvent!.start?.dateTime ??
+                                                _nextEvent!.start?.date)!
+                                            .toLocal();
+                                    return _nextEvent!.start?.dateTime != null
+                                        ? DateFormat(
+                                          'dd/MM HH:mm',
+                                        ).format(start)
+                                        : DateFormat('dd/MM').format(start);
+                                  })(),
+                                  style: AppTextStyles.tinyText(context),
+                                ),
                             ],
                           )),
             ),
