@@ -10,6 +10,10 @@ import 'package:pet_track/core/app_styles.dart';
 import 'package:pet_track/screens/add_edit_pet_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pet_track/components/google_auth.dart';
+import 'package:pet_track/services/calendar_service.dart';
+import 'package:googleapis/calendar/v3.dart' as gcal;
+import 'package:googleapis_auth/auth_io.dart';
 
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
@@ -27,6 +31,12 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   late DateTime _lastFed;
   late String _caracteristiques;
 
+  late final AuthService _authService;
+  CalendarService? _calendarService;
+  String? _petTrackCalendarId;
+  gcal.Event? _nextEvent;
+  bool _loadingEvent = true;
+
   @override
   void initState() {
     super.initState();
@@ -39,9 +49,53 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
             : DateTime(2025, 1, 1);
     _caracteristiques = 'Carregant...';
 
+    _authService = AuthService();
+    _loadNextEvent();
+
     _obtenirCaracteristiques().then((value) {
       if (!mounted) return;
       setState(() => _caracteristiques = value);
+    });
+  }
+
+  Future<void> _loadNextEvent() async {
+    final AuthClient? client = await _authService.getAuthenticatedClient();
+    if (client == null) {
+      setState(() => _loadingEvent = false);
+      return;
+    }
+    _calendarService = CalendarService(client);
+    _petTrackCalendarId =
+        await _calendarService!.ensurePetTrackCalendarExists();
+    if (_petTrackCalendarId == null) {
+      setState(() => _loadingEvent = false);
+      return;
+    }
+    final now = DateTime.now().toUtc();
+    final end = now.add(const Duration(days: 365));
+    final events = await _calendarService!.getEvents(
+      _petTrackCalendarId!,
+      now,
+      end,
+    );
+
+    final List<gcal.Event> matched = [];
+    for (final e in events) {
+      final raw = e.extendedProperties?.private?['petIds'];
+      if (raw == null) continue;
+      try {
+        final ids = List<String>.from(json.decode(raw));
+        if (ids.contains(pet['id'])) matched.add(e);
+      } catch (_) {}
+    }
+    matched.sort((a, b) {
+      final aStart = a.start?.dateTime ?? a.start?.date;
+      final bStart = b.start?.dateTime ?? b.start?.date;
+      return aStart!.compareTo(bStart!);
+    });
+    setState(() {
+      _nextEvent = matched.isNotEmpty ? matched.first : null;
+      _loadingEvent = false;
     });
   }
 
@@ -244,17 +298,42 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
             ),
             const SizedBox(height: 24),
             Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.notifications_none, color: AppColors.accent),
-                  const SizedBox(width: 8),
-                  Text(
-                    'No hi ha esdeveniments propers',
-                    style: AppTextStyles.midText(context),
-                  ),
-                ],
-              ),
+              child:
+                  _loadingEvent
+                      ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.accent,
+                        ),
+                      )
+                      : (_nextEvent == null
+                          ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.notifications_none,
+                                color: AppColors.accent,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'No hi ha esdeveniments propers',
+                                style: AppTextStyles.midText(context),
+                              ),
+                            ],
+                          )
+                          : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.notifications,
+                                color: AppColors.accent,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _nextEvent!.summary ?? 'Esdeveniment',
+                                style: AppTextStyles.midText(context),
+                              ),
+                            ],
+                          )),
             ),
             const SizedBox(height: 24),
             Center(
