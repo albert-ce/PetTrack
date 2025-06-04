@@ -96,8 +96,7 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
       return;
     }
     _calendarService = CalendarService(client);
-    _petTrackCalendarId =
-        await _calendarService!.ensurePetTrackCalendarExists();
+    _petTrackCalendarId = await _calendarService!.createPetTrackCalendar();
     if (_petTrackCalendarId == null) {
       setState(() => _loadingEvent = false);
       return;

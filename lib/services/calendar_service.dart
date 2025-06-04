@@ -1,6 +1,8 @@
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:googleapis_auth/auth_io.dart';
 
+// Aquest fixter conté la lògica per gestionar el servei de Google Calendar API.
+
 class CalendarService {
   final AuthClient _client;
   late final gcal.CalendarApi _calendarApi;
@@ -9,65 +11,62 @@ class CalendarService {
     _calendarApi = gcal.CalendarApi(_client);
   }
 
-  // Nuevo método: Obtener la lista de calendarios del usuario
-  Future<List<gcal.CalendarListEntry>> getCalendarList() async {
+  // Crea el calendari "PetTrack" en cas de que aquest no existeixi a la llista de l'usuari, retornant en el seu ID.
+  Future<String?> createPetTrackCalendar() async {
     try {
       final calendarList = await _calendarApi.calendarList.list();
-      return calendarList.items ?? [];
-    } catch (e) {
-      print('Error fetching calendar list: $e');
-      return [];
-    }
-  }
-
-  // Nuevo método: Comprobar y crear el calendario "PetTrack" si no existe
-  Future<String?> ensurePetTrackCalendarExists() async {
-    try {
-      // (1) Obtener la lista de calendarios. Asegurarse de que se está listando correctamente.
-      final calendarList = await _calendarApi.calendarList.list();
-      final List<gcal.CalendarListEntry> userCalendars = calendarList.items ?? [];
-
-      // (2) Buscar el calendario "PetTrack" de forma insensible a mayúsculas/minúsculas y espacios
+      final List<gcal.CalendarListEntry> userCalendars =
+          calendarList.items ?? [];
       gcal.CalendarListEntry? petTrackCalendar;
       for (var cal in userCalendars) {
-        if (cal.summary != null && cal.summary!.trim().toLowerCase() == 'pettrack') {
+        if (cal.summary != null &&
+            cal.summary!.trim().toLowerCase() == 'pettrack') {
           petTrackCalendar = cal;
           break;
         }
       }
 
       if (petTrackCalendar != null && petTrackCalendar.id != null) {
-        // El calendario "PetTrack" ya existe
-        print('El calendario "PetTrack" ya existe con ID: ${petTrackCalendar.id}');
+        print(
+          'El calendario "PetTrack" ya existe con ID: ${petTrackCalendar.id}',
+        );
         return petTrackCalendar.id;
       } else {
-        // El calendario "PetTrack" no existe, crearlo
-        final newCalendar = gcal.Calendar()
-          ..summary = 'PetTrack'
-          ..description = 'Calendario para eventos relacionados con tus mascotas en PetTrack App.'
-          ..timeZone = 'Europe/Madrid'; // Ajusta la zona horaria si es necesario
+        final newCalendar =
+            gcal.Calendar()
+              ..summary = 'PetTrack'
+              ..description =
+                  'Calendario para eventos relacionados con tus mascotas en PetTrack App.'
+              ..timeZone = 'Europe/Madrid';
 
-        final createdCalendar = await _calendarApi.calendars.insert(newCalendar);
+        final createdCalendar = await _calendarApi.calendars.insert(
+          newCalendar,
+        );
         if (createdCalendar.id != null) {
           print('Calendario "PetTrack" creado con ID: ${createdCalendar.id}');
           return createdCalendar.id;
         } else {
-          print('Error: El calendario "PetTrack" no se pudo crear o no devolvió un ID válido.');
+          print(
+            'Error: El calendario "PetTrack" no se pudo crear o no devolvió un ID válido.',
+          );
           return null;
         }
       }
     } catch (e) {
-      print('Error en ensurePetTrackCalendarExists: $e');
-      // Puedes añadir un SnackBar o un logging más detallado aquí
+      print('Error en createPetTrackCalendar: $e');
       return null;
     }
   }
 
-
-Future<List<gcal.Event>> getEvents(String calendarId, DateTime startDate, DateTime endDate) async {
+  // Retorna la llista d'events existents al calendari entre les dates pasades per paràmetre.
+  Future<List<gcal.Event>> getEvents(
+    String calendarId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     try {
       final events = await _calendarApi.events.list(
-        calendarId, // Usa el ID del calendario específico
+        calendarId,
         timeMin: startDate.toUtc(),
         timeMax: endDate.toUtc(),
         singleEvents: true,
@@ -80,12 +79,12 @@ Future<List<gcal.Event>> getEvents(String calendarId, DateTime startDate, DateTi
     }
   }
 
-  // Modificado: createEvent ahora recibe el calendarId
+  // Afegeix un event al calendari pasat per paràmetre.
   Future<gcal.Event?> createEvent(String calendarId, gcal.Event event) async {
     try {
       final createdEvent = await _calendarApi.events.insert(
         event,
-        calendarId, // Usa el ID del calendario específico
+        calendarId,
       );
       return createdEvent;
     } catch (e) {

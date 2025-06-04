@@ -59,8 +59,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final AuthClient? client = await _authService.getAuthenticatedClient();
     if (client != null) {
       _calendarService = CalendarService(client);
-      _petTrackCalendarId =
-          await _calendarService!.ensurePetTrackCalendarExists();
+      _petTrackCalendarId = await _calendarService!.createPetTrackCalendar();
       if (_petTrackCalendarId != null) {
         await _fetchEventsForVisibleRange(_focusedDay, _calendarFormat);
       } else {
