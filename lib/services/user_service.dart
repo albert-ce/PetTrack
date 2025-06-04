@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// Aquest fitxer gestiona les dades de l'usuari autenticat a Firebase.
+
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Rep l'usuari actual autenticat i retorna les seves dades.
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
       final User? user = _auth.currentUser;
@@ -20,10 +23,3 @@ class UserService {
     }
   }
 }
-
-
-// await db.collection("users").get().then((event) {
-//   for (var doc in event.docs) {
-//     print("${doc.id} => ${doc.data()}");
-//   }
-// });
