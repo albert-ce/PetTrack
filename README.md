@@ -12,6 +12,24 @@ Aquest projecte ha estat desenvolupat dins l’assignatura de **Sistemes Multim�
 * **Levon Kesoyan Galstyan** (1668018)
 * **Luis Martínez Zamora** (1668180)
 
+## 🚀 Com començar
+
+Per començar amb PetTrack, segueix els passos següents:
+
+1.  Clona el repositori:
+    ```bash
+    git clone https://github.com/nom-del-teu-usuari/PetTrack.git
+    cd PetTrack
+    ```
+2. Modifica claus personals
+
+   Si vols utilitzar o contribuir a aquest projecte, hauràs de configurar algunes claus i configuracions sensibles que no s'inclouen en el repositori. Segueix aquests passos:
+    
+    1.  📄 **Crea el teu propi fitxer `.env`** amb les teves variables d'entorn. Aquest arxiu, que conté la clau de `GEMINI_API_KEY`, ha d'estar situat a l'**arrel del projecte**.
+    2.  🔑 **Obtén el teu propi `google-services.json`** des de la consola de Firebase. Cal col·locar-lo dins de la carpeta `/android/app`.
+    3.  ⚙️ **Crea el teu propi `key.properties`** amb les teves claus d'API, especialment per a Google Maps. Aquest fitxer s'ha de situar a la carpeta `/android`.
+    4.  🔄 **Genera el teu propi `firebase_options.dart`** utilitzant la comanda `flutterfire configure` un cop hagis configurat el teu projecte a Firebase. Aquest arxiu es generarà automàticament a la ubicació correcta dins del projecte.
+
 ## 📱 Funcionalitats Clau
 
 PetTrack és una aplicació mòbil robusta que permet als usuaris registrar-se amb el seu compte de Google i gestionar de manera eficient diversos aspectes de la vida de les seves mascotes. Les seves funcionalitats principals inclouen:
@@ -40,20 +58,4 @@ Les tecnologies utilitzades inclouen:
 * ⏰ **Cloud Scheduler**: Programa tasques automàtiques com l'activació diària de Cloud Functions.
 * 🔄 **Pub/Sub (Publisher/Subscriber)**: Facilita la comunicació deslligada i coordinada entre serveis, com entre Cloud Scheduler i Cloud Functions.
 
-## 🚀 Com començar
 
-Per començar amb PetTrack, segueix els passos següents:
-
-1.  Clona el repositori:
-    ```bash
-    git clone https://github.com/nom-del-teu-usuari/PetTrack.git
-    cd PetTrack
-    ```
-2. Modifica claus personals
-
-   Si vols utilitzar o contribuir a aquest projecte, hauràs de configurar algunes claus i configuracions sensibles que no s'inclouen en el repositori. Segueix aquests passos:
-    
-    1.  📄 Crea el teu propi fitxer `.env` amb les teves variables d'entorn. Aquest arxiu conté les claus de  `GEMINI_API_KEY`, `GOOGLE_SERVER_CLIENT_ID` i `MAPS_API_KEY`.
-    2.  🔑 Obtén el teu propi `google-services.json` des de la consola de Firebase.
-    3.  ⚙️ Crea el teu propi `key.properties` amb les teves claus d'API, especialment per a Google Maps.
-    4.  🔄 Genera el teu propi `firebase_options.dart` utilitzant `flutterfire configure` després de configurar el teu projecte a Firebase.
