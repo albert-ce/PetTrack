@@ -4,7 +4,7 @@
 
 **PetTrack** és una aplicació dissenyada per simplificar i centralitzar la gestió del benestar de les teves mascotes. Amb PetTrack, tindràs tota la informació essencial en un sol lloc, de manera clara i intuïtiva, permetent-te concentrar-te en la cura del teu animal sense preocupar-te per recordar cada detall.
 
-Aquest projecte ha estat desenvolupat com a part del repte **"Hackathons of Cloud Services: Co-creating and deploying"** dins l’assignatura de **Sistemes Multimèdia 2024–2025**.
+Aquest projecte ha estat desenvolupat dins l’assignatura de **Sistemes Multimèdia 2024–2025** a la UAB.
 
 ## 👨‍💻 Desenvolupada per:
 
