@@ -4,10 +4,9 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:pet_track/services/calendar_service.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 
 class AddEditTaskScreen extends StatefulWidget {
-  final gcal.Event? taskData;
   final DateTime? initialSelectedDay;
   final CalendarService calendarService;
   final String petTrackCalendarId;
@@ -15,11 +14,10 @@ class AddEditTaskScreen extends StatefulWidget {
 
   const AddEditTaskScreen({
     super.key,
-    this.taskData,
     this.initialSelectedDay,
     required this.calendarService,
     required this.petTrackCalendarId,
-    required this.availablePets, // ¡Ahora requerido!
+    required this.availablePets,
   });
 
   @override
@@ -41,60 +39,18 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   CalendarService get _calendarService => widget.calendarService;
   String get _petTrackCalendarId => widget.petTrackCalendarId;
 
-  List<String> _selectedPetIds = []; 
-
-  bool get _editant => widget.taskData != null;
+  final List<String> _selectedPetIds = [];
 
   @override
   void initState() {
     super.initState();
 
-    if (_editant) {
-      final task = widget.taskData!;
-      _titleController.text = task.summary ?? '';
-      _descriptionController.text = task.description ?? '';
-
-      _isAllDay = task.start?.date != null && task.start?.dateTime == null;
-
-      if (task.start?.dateTime != null) {
-        _selectedDate = task.start!.dateTime!.toLocal();
-        _selectedStartTime = TimeOfDay.fromDateTime(_selectedDate!);
-      } else if (task.start?.date != null) {
-        _selectedDate = task.start!.date!;
-      }
-
-      if (task.end?.dateTime != null) {
-        _selectedEndTime = TimeOfDay.fromDateTime(
-          task.end!.dateTime!.toLocal(),
-        );
-      }
-
-      if (_selectedDate != null) {
-        _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-      }
-
-      if (task.extendedProperties?.private?['petIds'] != null) {
-        try {
-          final decoded = json.decode(
-            task.extendedProperties!.private!['petIds']!,
-          );
-          if (decoded is List) {
-            _selectedPetIds = List<String>.from(
-              decoded.map((id) => id.toString()),
-            );
-          }
-        } catch (e) {
-          print('Error al decodificar petIds de extendedProperties: $e');
-        }
-      }
-    } else {
-      _selectedDate = widget.initialSelectedDay ?? DateTime.now();
-      _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-      _selectedStartTime = TimeOfDay.now();
-      _selectedEndTime = TimeOfDay.fromDateTime(
-        DateTime.now().add(const Duration(hours: 1)),
-      );
-    }
+    _selectedDate = widget.initialSelectedDay ?? DateTime.now();
+    _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+    _selectedStartTime = TimeOfDay.now();
+    _selectedEndTime = TimeOfDay.fromDateTime(
+      DateTime.now().add(const Duration(hours: 1)),
+    );
   }
 
   @override
@@ -144,10 +100,9 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   Future<void> _selectTime(BuildContext context, bool isStartTime) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime:
-          isStartTime
-              ? (_selectedStartTime ?? TimeOfDay.now())
-              : (_selectedEndTime ?? TimeOfDay.now()),
+      initialTime: isStartTime
+          ? (_selectedStartTime ?? TimeOfDay.now())
+          : (_selectedEndTime ?? TimeOfDay.now()),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -261,11 +216,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
     if (_selectedPetIds.isNotEmpty) {
       newEvent.extendedProperties = gcal.EventExtendedProperties(
-        // CORRECCIÓN: 'privateProperty' a 'private'
         private: {
           'petIds': json.encode(
             _selectedPetIds,
-          ), // Guarda los IDs como un JSON string
+          ),
         },
       );
     }
@@ -273,37 +227,28 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (context) => AlertDialog(
-            content: Row(
-              children: [
-                const CircularProgressIndicator(color: AppColors.accent),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Text(
-                    _editant ? 'Guardant tasca...' : 'Afegint tasca...',
-                    style: AppTextStyles.midText(context),
-                  ),
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(color: AppColors.accent),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                'Afegint tasca...',
+                style: AppTextStyles.midText(context),
+              ),
             ),
-          ),
+          ],
+        ),
+      ),
     );
 
     try {
       gcal.Event? resultEvent;
-      if (_editant) {
-        resultEvent = await _calendarService.updateEvent(
-          _petTrackCalendarId,
-          widget.taskData!.id!,
-          newEvent,
-        );
-      } else {
-        resultEvent = await _calendarService.createEvent(
-          _petTrackCalendarId,
-          newEvent,
-        );
-      }
+      resultEvent = await _calendarService.createEvent(
+        _petTrackCalendarId,
+        newEvent,
+      );
 
       if (mounted) {
         Navigator.of(
@@ -316,9 +261,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _editant
-                  ? 'Tasca "${resultEvent.summary}" actualizada amb éxit.'
-                  : 'Tasca "${resultEvent.summary}" afegida con éxit.',
+              'Tasca "${resultEvent.summary}" afegida con éxit.',
             ),
             backgroundColor: Colors.green,
           ),
@@ -352,90 +295,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
-  // --- Lógica de Eliminar Tarea ---
-  Future<void> _deleteTask() async {
-    if (_petTrackCalendarId.isEmpty || widget.taskData?.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: No es pot eliminar la tasca.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final res = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Eliminar tasca'),
-            content: const Text('¿Seguro que vols eliminar aquesta tasca?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Eliminar',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
-          ),
-    );
-
-    if (res == true) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (context) => AlertDialog(
-              content: Row(
-                children: [
-                  const CircularProgressIndicator(color: AppColors.accent),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Text(
-                      'Eliminant tasca...',
-                      style: AppTextStyles.midText(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-      );
-      try {
-        await _calendarService.deleteEvent(
-          _petTrackCalendarId,
-          widget.taskData!.id!,
-        );
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tasca eliminada amb éxit.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, {'deleted': true, 'id': widget.taskData!.id});
-      } catch (e) {
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
-        }
-        print('Error al eliminar la tasca: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar la tasca: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -461,7 +320,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.background,
           title: Text(
-            _editant ? 'Editar tasca' : 'Afegir tasca',
+            'Afegir tasca',
             style: AppTextStyles.titleText(context),
           ),
         ),
@@ -488,7 +347,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   keyboardType: TextInputType.multiline,
                 ),
                 SizedBox(height: screenHeight * 0.025),
-
                 GestureDetector(
                   onTap: () => _selectDate(context),
                   child: AbsorbPointer(
@@ -505,7 +363,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.0125),
-
                 Row(
                   children: [
                     Text('Tot el dia:', style: AppTextStyles.midText(context)),
@@ -525,11 +382,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                             _selectedEndTime = TimeOfDay.fromDateTime(
                               DateTime.now().add(const Duration(hours: 1)),
                             );
-                            _startTimeController.text = _selectedStartTime!
-                                .format(context);
-                            _endTimeController.text = _selectedEndTime!.format(
-                              context,
-                            );
+                            _startTimeController.text =
+                                _selectedStartTime!.format(context);
+                            _endTimeController.text =
+                                _selectedEndTime!.format(context);
                           }
                         });
                       },
@@ -539,7 +395,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   ],
                 ),
                 SizedBox(height: screenHeight * 0.0125),
-
                 if (!_isAllDay) ...[
                   GestureDetector(
                     onTap: () => _selectTime(context, true),
@@ -574,7 +429,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                   ),
                   SizedBox(height: screenHeight * 0.02),
                 ],
-
                 Text(
                   'Mascotes asociades:',
                   style: AppTextStyles.midText(context),
@@ -582,52 +436,52 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                 SizedBox(height: screenHeight * 0.0125),
                 widget.availablePets.isEmpty
                     ? Text(
-                      'No hay mascotas disponibles.',
-                      style: AppTextStyles.tinyText(
-                        context,
-                      ).copyWith(color: AppColors.black),
-                    )
+                        'No hay mascotas disponibles.',
+                        style: AppTextStyles.tinyText(
+                          context,
+                        ).copyWith(color: AppColors.black),
+                      )
                     : Wrap(
-                      spacing: 8.0, // Espacio entre chips
-                      runSpacing: 4.0, // Espacio entre líneas de chips
-                      children:
-                          widget.availablePets.map((pet) {
-                            final petId = pet['id'] as String;
-                            final petName = pet['name'] as String;
-                            final isSelected = _selectedPetIds.contains(petId);
+                        spacing: 8.0, // Espacio entre chips
+                        runSpacing: 4.0, // Espacio entre líneas de chips
+                        children: widget.availablePets.map((pet) {
+                          final petId = pet['id'] as String;
+                          final petName = pet['name'] as String;
+                          final isSelected = _selectedPetIds.contains(petId);
 
-                            return FilterChip(
-                              label: Text(petName),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedPetIds.add(petId);
-                                  } else {
-                                    _selectedPetIds.remove(petId);
-                                  }
-                                });
-                              },
-                              selectedColor: AppColors.primary,
-                              checkmarkColor: Colors.white,
-                              labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black,
-                              ),
-                              backgroundColor: AppColors.backgroundComponent,
-                            );
-                          }).toList(),
-                    ),
+                          return FilterChip(
+                            label: Text(petName),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedPetIds.add(petId);
+                                } else {
+                                  _selectedPetIds.remove(petId);
+                                }
+                              });
+                            },
+                            selectedColor: AppColors.primary,
+                            checkmarkColor: Colors.white,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                            ),
+                            backgroundColor: AppColors.backgroundComponent,
+                          );
+                        }).toList(),
+                      ),
                 SizedBox(height: screenHeight * 0.02),
-
                 Material(
                   borderRadius: BorderRadius.circular(screenHeight * 0.015),
                   child: Ink(
                     decoration: BoxDecoration(
                       gradient: AppColors.gradient,
-                      borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                      borderRadius:
+                          BorderRadius.circular(screenHeight * 0.015),
                     ),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(screenHeight * 0.015),
+                      borderRadius:
+                          BorderRadius.circular(screenHeight * 0.015),
                       onTap: _saveTask,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
@@ -635,7 +489,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            _editant ? 'Guardar canvis' : 'Afegir tasca',
+                            'Afegir tasca',
                             style: AppTextStyles.bigText(context).copyWith(
                               color: Colors.white,
                               fontSize: screenHeight * 0.03,
@@ -646,40 +500,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                     ),
                   ),
                 ),
-                if (_editant) ...[
-                  SizedBox(height: screenHeight * 0.02),
-                  Material(
-                    borderRadius: BorderRadius.circular(screenHeight * 0.015),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(
-                          screenHeight * 0.015,
-                        ),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(
-                          screenHeight * 0.015,
-                        ),
-                        onTap: _deleteTask,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: screenHeight * 0.02,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Eliminar tasca',
-                              style: AppTextStyles.bigText(context).copyWith(
-                                color: Colors.white,
-                                fontSize: screenHeight * 0.03,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

@@ -20,17 +20,6 @@ class CalendarService {
     }
   }
 
-  // Nuevo método: Crear un nuevo calendario
-  Future<gcal.Calendar?> createCalendar(gcal.Calendar calendar) async {
-    try {
-      final createdCalendar = await _calendarApi.calendars.insert(calendar);
-      return createdCalendar;
-    } catch (e) {
-      print('Error creating calendar: $e');
-      return null;
-    }
-  }
-
   // Nuevo método: Comprobar y crear el calendario "PetTrack" si no existe
   Future<String?> ensurePetTrackCalendarExists() async {
     try {
@@ -75,8 +64,7 @@ class CalendarService {
   }
 
 
-  // Modificado: getEvents ahora recibe el calendarId
-  Future<List<gcal.Event>> getEvents(String calendarId, DateTime startDate, DateTime endDate) async {
+Future<List<gcal.Event>> getEvents(String calendarId, DateTime startDate, DateTime endDate) async {
     try {
       final events = await _calendarApi.events.list(
         calendarId, // Usa el ID del calendario específico
@@ -103,34 +91,6 @@ class CalendarService {
     } catch (e) {
       print('Error creating event in $calendarId: $e');
       return null;
-    }
-  }
-
-  // Modificado: updateEvent ahora recibe el calendarId
-  Future<gcal.Event?> updateEvent(String calendarId, String eventId, gcal.Event event) async {
-    try {
-      final updatedEvent = await _calendarApi.events.update(
-        event,
-        calendarId, // Usa el ID del calendario específico
-        eventId,
-      );
-      return updatedEvent;
-    } catch (e) {
-      print('Error updating event $eventId in $calendarId: $e');
-      return null;
-    }
-  }
-
-  // Modificado: deleteEvent ahora recibe el calendarId
-  Future<void> deleteEvent(String calendarId, String eventId) async {
-    try {
-      await _calendarApi.events.delete(
-        calendarId, // Usa el ID del calendario específico
-        eventId,
-      );
-      print('Evento $eventId eliminado con éxito de $calendarId.');
-    } catch (e) {
-      print('Error deleting event $eventId from $calendarId: $e');
     }
   }
 }
