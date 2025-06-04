@@ -6,7 +6,10 @@ import 'package:pet_track/screens/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pet_track/screens/home_screen.dart';
 
-// void main() => runApp(const MainApp());
+// Punt d’entrada de l’aplicació PetTrack. Carrega les variables .env,
+// inicialitza Firebase i engega el widget MainApp, que decideix
+// si mostra HomeScreen o LoginScreen segons l’estat d’autenticació.
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
