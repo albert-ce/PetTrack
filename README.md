@@ -1,16 +1,26 @@
 ![PetTrack Banner](./assets/images/logo.png)
 
 # 🐾 PetTrack: Gestió intel·ligent de mascotes
+<table>
+<tr>
+<td>
 
 **PetTrack** és una aplicació dissenyada per simplificar i centralitzar la gestió del benestar de les teves mascotes. Amb PetTrack, tindràs tota la informació essencial en un sol lloc, de manera clara i intuïtiva, permetent-te concentrar-te en la cura del teu animal sense preocupar-te per recordar cada detall.
 
 Aquest projecte ha estat desenvolupat dins l’assignatura de **Sistemes Multimèdia 2024–2025** a la UAB.
-
 ## 👨‍💻 Desenvolupada per:
 
 * **Albert Capdevila Estadella** (1587933)
 * **Levon Kesoyan Galstyan** (1668018)
 * **Luis Martínez Zamora** (1668180)
+
+</td>
+<td>
+<img src="./assets/images/screenshots.png" alt="Captures de PetTrack" width="800"/>
+</td>
+</tr>
+</table>
+
 
 ## 🚀 Com començar
 
