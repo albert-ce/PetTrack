@@ -6,6 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math';
 
+// Aquest fitxer defineix el widget de targeta de mascota (PetCard). Mostra una imatge, dades bàsiques (nom, raça, edat, sexe)
+// i incorpora el botó FeedButton per registrar racions de menjar i l’última hora d’alimentació.
+
 class PetCard extends StatefulWidget {
   final Map<String, dynamic> petData;
   final VoidCallback? onTap;
@@ -53,6 +56,7 @@ class _PetCardState extends State<PetCard> {
             ? NetworkImage(imageUrl)
             : AssetImage('assets/images/$species.png');
 
+    // Actualitza a Firestore el recompte diari i, si cal, la data "lastFed" de la mascota.
     void updateLastFed(bool add) {
       dailyFeedCount =
           add

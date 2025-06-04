@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 
+// Aquest fitxer implementa la pantalla de mapa que registra en temps real la ruta de passeig de la mascota,
+// dibuixant els punts recollits i la posició actual sobre Google Maps. Gestiona la subscripció al GPS,
+// la càmera del mapa i la visualització del traçat.
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
   @override

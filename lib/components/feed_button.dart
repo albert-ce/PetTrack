@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pet_track/core/app_colors.dart';
 
+// Aquest fitxer conté el widget del botó d'alimentació, que permet registrar una
+// nova ració de menjar per a la mascota de manera visual i interactiva.
+
 class FeedButton extends StatefulWidget {
   final double size;
   final int dailyFeedCount;

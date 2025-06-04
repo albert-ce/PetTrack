@@ -3,6 +3,9 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// Aquest fitxer defineix un widget personalitzat de barra superior (AppBar) per a
+// l'aplicació, amb un estil i funcionalitats comunes.
+
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final double height;
   final Color? iconColor;

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 
+// Aquest fitxer defineix la barra de navegació inferior (BottomNavigationBar) de l'aplicació, que permet
+// moure's ràpidament entre les pantalles principals (mascotes, calendari, rutes, perfil) mantenint l’estat seleccionat.
+
 class NavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
