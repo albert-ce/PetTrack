@@ -8,6 +8,11 @@ import 'package:pet_track/models/pets_db.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:pet_track/screens/tracking_screen.dart';
 
+// Pantalla de selecció i enregistrament de rutes amb mascotes. Permet
+// triar quines mascotes participen, centra el mapa a la ubicació de
+// l’usuari, inicia el seguiment (TrackingScreen) i desa a Firestore els
+// detalls de la ruta (temps, distància, traçat) per a cada mascota.
+
 class RoutesWithPetsScreen extends StatefulWidget {
   const RoutesWithPetsScreen({super.key});
 
@@ -30,6 +35,7 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
     });
   }
 
+  // Afegeix o elimina la mascota amb ID [id] del conjunt _selectedIds.
   void _togglePet(String id) {
     setState(() {
       if (_selectedIds.contains(id)) {
@@ -40,6 +46,8 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
     });
   }
 
+  // Si totes les mascotes estan seleccionades les desmarca; en cas contrari,
+  // selecciona-les totes. Utilitza _selectedIds i la llista [pets].
   void _toggleAll(List<Map<String, dynamic>> pets) {
     setState(() {
       if (_selectedIds.length == pets.length) {
@@ -52,6 +60,8 @@ class _RoutesWithPetsScreenState extends State<RoutesWithPetsScreen> {
     });
   }
 
+  // Demana permisos de localització, obté la posició actual i anima la
+  // càmera del GoogleMap perquè se centri a l’usuari.
   Future<void> _centerMapOnUser() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();

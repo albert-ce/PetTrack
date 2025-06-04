@@ -7,6 +7,11 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pet_track/services/fcm_service.dart';
 
+// Pantalla d’inici de sessió de PetTrack. Mostra un missatge de benvinguda
+// i un botó “Iniciar sessió amb Google” que autentica l’usuari, registra
+// el dispositiu a FCM, carrega les mascotes des del backend i redirigeix
+// automàticament cap a la HomeScreen un cop completat el procés.
+
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 

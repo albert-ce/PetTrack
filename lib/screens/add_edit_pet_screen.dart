@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -15,6 +14,10 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+// Pantalla per afegir o editar una mascota. Permet fer o seleccionar una foto,
+// identificar la raça amb Gemini, pujar la imatge a Firebase Storage i
+// desar/actualitzar les dades de la mascota a Cloud Firestore. També disposa
+// d’opció per eliminar la mascota i la seva imatge del núvol.
 class AddEditPetScreen extends StatefulWidget {
   final Map<String, dynamic>? petData;
   const AddEditPetScreen({super.key, this.petData});
@@ -63,6 +66,7 @@ class _AddEditPetScreenState extends State<AddEditPetScreen> {
     }
   }
 
+  // Envia la imatge a Gemini per inferir la raça i retorna la raça o el string “Raça desconeguda”.
   Future<String> _obtenirRaca(File imatge) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
     if (apiKey == null) return 'Raça desconeguda';
@@ -101,6 +105,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     return 'Raça desconeguda';
   }
 
+  // Comprimeix la imatge localment per reduir el pes abans de pujar-la.
   Future<XFile> _comprimeixImatge(XFile imatgeOriginal) async {
     final imatgeComprimida = await FlutterImageCompress.compressAndGetFile(
       imatgeOriginal.path,
@@ -114,6 +119,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
         : imatgeOriginal;
   }
 
+  // Puja la imatge comprimida a Firebase Storage i retorna la URL pública.
   Future<String> _pujaImatgeFirebase(XFile imatge, String petId) async {
     final imatgeComprimida = await _comprimeixImatge(imatge);
     final file = File(imatgeComprimida.path);
@@ -123,6 +129,8 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     return await snap.ref.getDownloadURL();
   }
 
+  // Gestiona tot el flux després de triar imatge: pujar-la,
+  // obtenir la raça i actualitzar l’estat amb la URL i la raça.
   Future<void> _processaImatge(XFile imatge) async {
     setState(() {
       _imatge = imatge;
@@ -146,6 +154,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     });
   }
 
+  // Mostra un bottom-sheet per escollir càmera o galeria i inicia la selecció d’imatge.
   void _seleccionaImatge() {
     final picker = ImagePicker();
     showModalBottomSheet(
@@ -184,6 +193,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     );
   }
 
+  // Valida el formulari, puja imatge si cal i crea/actualitza el document de la mascota a Firestore.
   Future<void> _desaMascota() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final petId =
@@ -244,6 +254,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     Navigator.pop(context, _editant ? {...widget.petData!, ...dades} : true);
   }
 
+  // Elimina la foto de Storage i el document de la mascota a Firestore.
   Future<void> _eliminaMascota() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final id = widget.petData!['id'] as String;
@@ -262,6 +273,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     if (mounted) Navigator.pop(context, {'deleted': true, 'id': id});
   }
 
+  // Mostra un diàleg de confirmació i, si s’accepta, crida _eliminaMascota().
   Future<void> _confirmaElimina() async {
     final res = await showDialog<bool>(
       context: context,
@@ -287,6 +299,7 @@ Si no ho saps, respon exactament així: Raça desconeguda''';
     if (res == true) _eliminaMascota();
   }
 
+  // Construeix un botó circular reutilitzable (icona + estat seleccionat).
   Widget _botoCircular({
     required IconData icona,
     required bool seleccionat,

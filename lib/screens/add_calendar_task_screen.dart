@@ -4,7 +4,11 @@ import 'package:pet_track/core/app_colors.dart';
 import 'package:pet_track/core/app_styles.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:pet_track/services/calendar_service.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
+
+// Pantalla per crear o editar una tasca al Google Calendar lligada a una o més mascotes.
+// Inclou formulari amb títol, descripció, data, franja horària o mode de tot el dia,
+// selector de mascotes, i permet guardar-la o eliminar-la mitjançant CalendarService.
 
 class AddEditTaskScreen extends StatefulWidget {
   final gcal.Event? taskData;
@@ -19,7 +23,7 @@ class AddEditTaskScreen extends StatefulWidget {
     this.initialSelectedDay,
     required this.calendarService,
     required this.petTrackCalendarId,
-    required this.availablePets, // ¡Ahora requerido!
+    required this.availablePets,
   });
 
   @override
@@ -41,7 +45,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   CalendarService get _calendarService => widget.calendarService;
   String get _petTrackCalendarId => widget.petTrackCalendarId;
 
-  List<String> _selectedPetIds = []; 
+  List<String> _selectedPetIds = [];
 
   bool get _editant => widget.taskData != null;
 
@@ -97,6 +101,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
+  // Assegura que els controladors d’hora tinguin text quan es disposa de _selectedStart/EndTime.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -110,7 +115,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
-  // --- Selectores de Fecha y Hora ---
+  // Mostra un DatePicker per triar la data i actualitza el controlador corresponent.
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -141,6 +146,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
+  // Mostra un TimePicker per triar hora d’inici o fi i actualitza el camp adequat.
   Future<void> _selectTime(BuildContext context, bool isStartTime) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -177,7 +183,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
-  // --- Lógica de Guardar Tarea ---
+  // Valida el formulari, construeix el gcal.Event amb propietats esteses (petIds)
+  // i invoca createEvent o updateEvent; gestiona diàlegs de càrrega i toasts d’èxit/error.
   Future<void> _saveTask() async {
     if (_petTrackCalendarId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -261,12 +268,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
     if (_selectedPetIds.isNotEmpty) {
       newEvent.extendedProperties = gcal.EventExtendedProperties(
-        // CORRECCIÓN: 'privateProperty' a 'private'
-        private: {
-          'petIds': json.encode(
-            _selectedPetIds,
-          ), // Guarda los IDs como un JSON string
-        },
+        private: {'petIds': json.encode(_selectedPetIds)},
       );
     }
 
@@ -306,10 +308,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       }
 
       if (mounted) {
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pop(); // Cierra el diálogo de carga
+        Navigator.of(context, rootNavigator: true).pop();
       }
 
       if (resultEvent != null) {
@@ -323,10 +322,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(
-          context,
-          true,
-        ); // Vuelve a la pantalla anterior indicando éxito
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -337,10 +333,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pop(); // Cierra el diálogo de carga
+        Navigator.of(context, rootNavigator: true).pop();
       }
       print('Error al guardar la tasca: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -352,7 +345,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     }
   }
 
-  // --- Lógica de Eliminar Tarea ---
+  // Confirma amb l’usuari, mostra diàleg de progrés i elimina l’esdeveniment del calendari.
   Future<void> _deleteTask() async {
     if (_petTrackCalendarId.isEmpty || widget.taskData?.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -412,7 +405,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
           widget.taskData!.id!,
         );
         if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
+          Navigator.of(context, rootNavigator: true).pop();
         }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -423,7 +416,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         Navigator.pop(context, {'deleted': true, 'id': widget.taskData!.id});
       } catch (e) {
         if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // Cierra el diálogo
+          Navigator.of(context, rootNavigator: true).pop();
         }
         print('Error al eliminar la tasca: $e');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -588,8 +581,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                       ).copyWith(color: AppColors.black),
                     )
                     : Wrap(
-                      spacing: 8.0, // Espacio entre chips
-                      runSpacing: 4.0, // Espacio entre líneas de chips
+                      spacing: 8.0,
+                      runSpacing: 4.0,
                       children:
                           widget.availablePets.map((pet) {
                             final petId = pet['id'] as String;

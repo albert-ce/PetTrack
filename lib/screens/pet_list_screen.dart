@@ -6,6 +6,10 @@ import 'package:pet_track/screens/add_edit_pet_screen.dart';
 import 'package:pet_track/screens/pet_details_screen.dart';
 import 'package:pet_track/models/pets_db.dart';
 
+// Pantalla que llista totes les mascotes de l’usuari. Carrega les dades amb
+// getPets(), mostra cada mascota en un PetCard, permet actualitzar la llista
+// amb un estirament (RefreshIndicator) i inclou un FAB per afegir-ne de noves.
+
 class PetListScreen extends StatefulWidget {
   const PetListScreen({super.key});
 
@@ -22,6 +26,7 @@ class _PetListScreenState extends State<PetListScreen> {
     _petsFuture = getPets();
   }
 
+  // Torna a cridar getPets() i fa setState per refrescar la llista.
   Future<void> _refreshPets() async {
     setState(() {
       _petsFuture = getPets();

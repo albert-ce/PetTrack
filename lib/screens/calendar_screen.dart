@@ -11,6 +11,11 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:pet_track/services/calendar_service.dart';
 import 'package:pet_track/screens/add_calendar_task_screen.dart';
 
+// Pantalla de calendari central de PetTrack: connecta amb Google Calendar,
+// carrega o crea el calendari “PetTrack”, llegeix els esdeveniments dins
+// del rang visible (mes/setmana) i els mostra amb el widget TableCalendar.
+// També permet afegir, editar i llistar tasques associades a mascotes.
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -41,6 +46,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadAllInitialData();
   }
 
+  // Després d’inicialitzar el widget, obté les mascotes de Firestore,
+  // prepara el client autenticat de Google i garanteix l’existència
+  // del calendari “PetTrack”, carregant els esdeveniments inicials.
   Future<void> _loadAllInitialData() async {
     try {
       _petsFuture = getPets();
@@ -77,6 +85,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // Recupera esdeveniments del calendari “PetTrack” per al rang
+  // corresponent (mes complet o setmana visible), els converteix en un
+  // mapa dia→llista d’esdeveniments i actualitza l’estat de càrrega.
   Future<void> _fetchEventsForVisibleRange(
     DateTime focusedDay,
     CalendarFormat format,
@@ -168,22 +179,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // Retorna la llista d’esdeveniments associats a un dia concret ja
+  // normalitzat a UTC (any-mes-dia) a partir del mapa _events.
   List<gcal.Event> _getEventsForDay(DateTime day) {
     final normalizedDay = DateTime.utc(day.year, day.month, day.day);
     return _events[normalizedDay] ?? [];
   }
 
-  // Función para obtener los nombres de las mascotas a partir de sus IDs
+  // Tradueix una llista d’IDs de mascotes en un únic string amb els seus
+  // noms, cercant-los a la col·lecció _availablePets carregada prèviament.
   String _getPetNamesFromIds(List<String> petIds) {
     if (petIds.isEmpty) return '';
     final names =
         petIds.map((id) {
           final pet = _availablePets.firstWhere(
             (p) => p['id'] == id,
-            orElse:
-                () => {
-                  'name': 'Mascota Desconocida',
-                }, // Manejo si no se encuentra
+            orElse: () => {'name': 'Mascota Desconocida'},
           );
           return pet['name'] as String;
         }).toList();
@@ -415,7 +426,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ).copyWith(color: AppColors.black),
                                     ),
                                   ),
-                                // --- Mostrar mascotas asociadas ---
                                 if (associatedPetNames.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
@@ -429,7 +439,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ),
                                     ),
                                   ),
-                                // --- Fin de mostrar mascotas asociadas ---
                               ],
                             ),
                           ),

@@ -15,6 +15,11 @@ import 'package:pet_track/services/calendar_service.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:googleapis_auth/auth_io.dart';
 
+// Pantalla de detalls d’una mascota. Mostra la foto, dades bàsiques, característiques
+// generades amb Gemini, recompte d’àpats del dia, últim passeig i el proper
+// esdeveniment del calendari PetTrack. Inclou botó per alimentar, accés a l’edició
+// i sincronitza la informació amb Firestore i Google Calendar.
+
 class PetDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> petData;
 
@@ -62,6 +67,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     });
   }
 
+  // Recupera l’últim passeig de Firestore i assigna les
+  // marques d’inici i fi a _lastWalkStart i _lastWalkEnd.
   Future<void> _loadLastWalk() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -89,6 +96,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     });
   }
 
+  // Assegura l’existència del calendari “PetTrack”, obté esdeveniments futurs,
+  // filtra els relacionats amb la mascota i desa el més proper a _nextEvent.
   Future<void> _loadNextEvent() async {
     final AuthClient? client = await _authService.getAuthenticatedClient();
     if (client == null) {
@@ -130,11 +139,15 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
     });
   }
 
+  // Converteix la línia de característiques separades per comes en una llista
+  // de punts amb salts de línia per a una millor llegibilitat.
   String _formatCaracteristiques(String text) {
     if (!text.contains(',')) return text;
     return text.split(',').map((c) => '• ${c.trim()}').join('\n');
   }
 
+  // Actualitza el recompte i la data de l’últim àpat tant en l’estat local
+  // com al document de la mascota a Firestore.
   void _updateFeed(bool add) {
     setState(() {
       _dailyFeedCount =
@@ -156,6 +169,8 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
         .update(updateData);
   }
 
+  // Envia una petició a Gemini amb espècie, raça, edat i sexe, i retorna
+  // 3-4 característiques clau de l’animal en una sola línia
   Future<String> _obtenirCaracteristiques() async {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
     if (apiKey == null) return 'Característiques desconegudes';
