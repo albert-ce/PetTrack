@@ -31,6 +31,9 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
   late DateTime _lastFed;
   late String _caracteristiques;
 
+  DateTime? _lastWalkStart;
+  DateTime? _lastWalkEnd;
+
   late final AuthService _authService;
   CalendarService? _calendarService;
   String? _petTrackCalendarId;
@@ -51,10 +54,38 @@ class _PetDetailsScreenState extends State<PetDetailsScreen> {
 
     _authService = AuthService();
     _loadNextEvent();
+    _loadLastWalk();
 
     _obtenirCaracteristiques().then((value) {
       if (!mounted) return;
       setState(() => _caracteristiques = value);
+    });
+  }
+
+  Future<void> _loadLastWalk() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final snap =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('pets')
+            .doc(pet['id'])
+            .collection('routes')
+            .orderBy('startTime', descending: true)
+            .limit(1)
+            .get();
+    if (snap.docs.isEmpty) return;
+    final data = snap.docs.first.data();
+    setState(() {
+      _lastWalkStart =
+          data['startTime'] is Timestamp
+              ? (data['startTime'] as Timestamp).toDate()
+              : null;
+      _lastWalkEnd =
+          data['endTime'] is Timestamp
+              ? (data['endTime'] as Timestamp).toDate()
+              : null;
     });
   }
 
@@ -212,18 +243,14 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
             }()
             : '';
 
-    final lastWalkStart =
-        pet['lastWalkStart'] is Timestamp
-            ? (pet['lastWalkStart'] as Timestamp).toDate()
-            : null;
-    final lastWalkEnd =
-        pet['lastWalkEnd'] is Timestamp
-            ? (pet['lastWalkEnd'] as Timestamp).toDate()
-            : null;
     final lastWalkText =
-        (lastWalkStart != null && lastWalkEnd != null)
-            ? '${DateFormat.Hm().format(lastWalkStart)} - ${DateFormat.Hm().format(lastWalkEnd)}'
-            : '12:00 - 12:30';
+        (_lastWalkStart != null && _lastWalkEnd != null)
+            ? '${DateFormat.Hm().format(_lastWalkStart!)} - ${DateFormat.Hm().format(_lastWalkEnd!)}'
+            : '–';
+    final lastWalkDateText =
+        _lastWalkStart != null
+            ? DateFormat('dd/MM').format(_lastWalkStart!)
+            : '';
 
     final imageUrl = pet['imageUrl'];
     if (imageUrl != null && imageUrl.isNotEmpty) {
@@ -237,7 +264,7 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBarWidget(
-        height: screenH * 0.10,
+        height: screenH * .10,
         iconColor: AppColors.background,
         actions: [
           IconButton(
@@ -376,23 +403,35 @@ Si no ho saps, respon exactament així: Característiques desconegudes''';
                       ),
                       const SizedBox(height: 4),
                       Text(lastWalkText, style: AppTextStyles.bigText(context)),
+                      if (lastWalkDateText.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          lastWalkDateText,
+                          style: AppTextStyles.tinyText(context),
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 26),
-            Center(
-              child: Text(
-                "Característiques:",
-                style: AppTextStyles.bigText(context),
-              ),
-            ),
-            Center(
-              child: Text(
-                _formatCaracteristiques(_caracteristiques),
-                textAlign: TextAlign.left,
-                style: AppTextStyles.midText(context),
+            const SizedBox(height: 30),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Característiques:",
+                    style: AppTextStyles.bigText(context),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _formatCaracteristiques(_caracteristiques),
+                    textAlign: TextAlign.left,
+                    style: AppTextStyles.midText(context),
+                  ),
+                ],
               ),
             ),
           ],

@@ -47,13 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserService _userService = UserService();
   Map<String, dynamic>? userData;
 
-  final _pages = const [
-    PetListScreen(),
-    CalendarScreen(),
-    RoutesWithPetsScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -69,6 +62,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _getPage(int index) {
+    switch (index) {
+      case 0:
+        return const PetListScreen();
+      case 1:
+        return const CalendarScreen();
+      case 2:
+        return const RoutesWithPetsScreen();
+      case 3:
+        return const ProfileScreen();
+      default:
+        return const PetListScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -77,25 +85,10 @@ class _HomeScreenState extends State<HomeScreen> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBarWidget(height: screenHeight * 0.1),
-        body: IndexedStack(index: _index, children: _pages),
+        body: _getPage(_index),
         bottomNavigationBar: NavBar(
           currentIndex: _index,
           onTap: (i) async {
-            if (i == 0) {
-              //   final response = await callCloudFunction(
-              //     functionName: 'get-pets',
-              //     firebaseIdToken: null,
-              //   );
-              //   if (response != null && response.statusCode == 200) {
-              //     print('Mascotes: ${response.body}');
-              //   } else {
-              //     print(
-              //       'Error carregant mascotes: ${response?.statusCode} ${response?.body}',
-              //     );
-              //   }
-              // }
-              print(userData);
-            }
             setState(() => _index = i);
           },
         ),

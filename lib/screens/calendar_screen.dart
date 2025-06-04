@@ -158,11 +158,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
     } catch (e) {
       print('Error al obtener eventos para el rango visible: $e');
-      setState(() {
-        _isLoadingEvents = false;
-        _events = {};
-        _selectedEvents = [];
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingEvents = false;
+          _events = {};
+          _selectedEvents = [];
+        });
+      }
     }
   }
 
