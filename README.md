@@ -46,7 +46,7 @@ Per començar amb PetTrack, segueix els passos següents:
 
 1.  Clona el repositori:
     ```bash
-    git clone [https://github.com/nom-del-teu-usuari/PetTrack.git](https://github.com/nom-del-teu-usuari/PetTrack.git)
+    git clone https://github.com/nom-del-teu-usuari/PetTrack.git
     cd PetTrack
     ```
 2. Modifica claus personals
