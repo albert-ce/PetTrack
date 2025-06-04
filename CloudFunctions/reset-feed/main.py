@@ -6,9 +6,10 @@ import functions_framework
 from cloudevents.http import CloudEvent
 import logging
 
-# Aquesta cloud function s'executa cada dia a les 00:00 i reinicia el comptador de racions diàries de les mascotes
+# Aquesta Cloud Function reinicia el comptador de racions diàries de les mascotes
 # En cas de no haber arribat al número de racions diàries establert, envia una notificació a l'usuari.
-
+# S'invoca cada dia a las 00:00, mitjançant una cadena: Cloud Scheduler -> Pub/Sub -> Cloud Function
+# Per tant, no la invoquem nosaltres directament, sinó que la Cloud Function s'executa automàticament.
 logging.basicConfig(level=logging.INFO)
 
 firebase_admin.initialize_app()
