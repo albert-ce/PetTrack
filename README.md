@@ -17,21 +17,8 @@ Aquest projecte ha estat desenvolupat dins l’assignatura de **Sistemes Multim�
 
 ## 🚀 Com començar
 
-Per començar amb PetTrack, segueix els passos següents:
-
-1.  Clona el repositori:
-    ```bash
-    git clone https://github.com/nom-del-teu-usuari/PetTrack.git
-    cd PetTrack
-    ```
-2. Modifica claus personals
-
-   Si vols utilitzar o contribuir a aquest projecte, hauràs de configurar algunes claus i configuracions sensibles que no s'inclouen en el repositori. Segueix aquests passos:
-    
-    1.  📄 **Crea el teu propi fitxer `.env`** amb les teves variables d'entorn. Aquest arxiu, que conté la clau de `GEMINI_API_KEY`, ha d'estar situat a l'**arrel del projecte**.
-    2.  🔑 **Obtén el teu propi `google-services.json`** des de la consola de Firebase. Cal col·locar-lo dins de la carpeta `/android/app`.
-    3.  ⚙️ **Crea el teu propi `key.properties`** amb les teves claus d'API, especialment per a Google Maps. Aquest fitxer s'ha de situar a la carpeta `/android`.
-    4.  🔄 **Genera el teu propi `firebase_options.dart`** utilitzant la comanda `flutterfire configure` un cop hagis configurat el teu projecte a Firebase. Aquest arxiu es generarà automàticament a la ubicació correcta dins del projecte.
+> \[!INFO]
+> Consulta la [**Guia de configuració i execució del projecte**](#-guia-de-configuració-i-execució-del-projecte) per veure com preparar l'entorn, configurar Firebase, desplegar les Cloud Functions i executar el projecte.
 
 ## 📱 Funcionalitats Clau
 
@@ -60,5 +47,97 @@ Les tecnologies utilitzades inclouen:
 * 🔔 **Firebase Messaging**: Serveix per enviar notificacions als usuaris, com avisos sobre àpats incomplets.
 * ⏰ **Cloud Scheduler**: Programa tasques automàtiques com l'activació diària de Cloud Functions.
 * 🔄 **Pub/Sub (Publisher/Subscriber)**: Facilita la comunicació deslligada i coordinada entre serveis, com entre Cloud Scheduler i Cloud Functions.
+
+## 🛠️ Guia de configuració i execució del projecte
+
+### Requisits
+- Flutter SDK instal·lat i configurat
+- Android Studio amb el SDK d'Android
+- Python 3.7 o superior (per a la Cloud Function)
+- Una compte de Google Cloud Platform amb Firebase
+- Node.js i npm instal·lats
+- Firebase CLI
+
+### Instal·lació i configuració
+
+1. **Clonar el repositori**
+   ```bash
+   git clone https://github.com/nom-del-teu-usuari/PetTrack.git
+   cd PetTrack
+   ```
+
+2. **Configurar Firebase**
+   - Crea un nou projecte a Firebase Console
+   - Habilita Authentication amb Google Sign-In
+   - Configura Cloud Firestore
+   - Habilita Firebase Storage
+   - Configura Firebase Cloud Messaging
+   - **Inicialitza Firebase al projecte**:
+     ```bash
+     firebase init
+     ```
+
+3. **Configurar fitxers de Firebase**
+   - Descarrega el fitxer `google-services.json` de Firebase Console
+   - Col·loca'l a `android/app/`
+   - Executa `flutterfire configure` per generar `firebase_options.dart`
+
+4. **Configurar variables d'entorn**
+   - Crea un fitxer `.env` a l'arrel del projecte:
+     ```
+     GEMINI_API_KEY=la-teva-api-key-de-gemini
+     ```
+
+5. **Configurar credencials d'Android**
+   - Crea el fitxer `android/key.properties`:
+     ```
+     maps.apiKey=la-teva-api-key-de-google-maps
+     ```
+
+6. **Instal·lar dependències de Flutter**
+   ```bash
+   flutter pub get
+   ```
+
+### Configurar la Cloud Function
+
+1. **Instal·lar dependències de la Cloud Function**
+   ```bash
+   cd CloudFunctions/reset-feed
+   python -m venv venv
+   # En Windows:
+   .\venv\Scripts\activate
+   # En Unix:
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Desplegar la Cloud Function**
+   ```bash
+   # Instal·lar Firebase CLI si no està instal·lat
+   npm install -g firebase-tools
+   
+   # Iniciar sessió a Firebase
+   firebase login
+   
+   # Desplegar la funció
+   firebase deploy --only functions:reset-feed
+   ```
+
+### Executar l'aplicació
+
+1. **Connecta un dispositiu Android o inicia un emulador**
+
+2. **Executa l'aplicació**
+   ```bash
+   flutter run
+   ```
+
+L'aplicació hauria d'iniciar-se al teu dispositiu Android. Assegura't de tenir habilitada la ubicació i els permisos necessaris per a una experiència completa.
+
+### Solució de problemes comuns
+
+- Si trobes errors amb les APIs de Google, verifica que totes les APIs necessàries estiguin habilitades a la Google Cloud Console
+- Si la Cloud Function no funciona, verifica els logs a Firebase Console
 
 
