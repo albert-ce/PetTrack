@@ -17,7 +17,7 @@ Aquest projecte ha estat desenvolupat dins l’assignatura de **Sistemes Multim�
 
 ## 🚀 Com començar
 
-> \[!INFO]
+> \[!NOTE]
 > Consulta la [**Guia de configuració i execució del projecte**](#-guia-de-configuració-i-execució-del-projecte) per veure com preparar l'entorn, configurar Firebase, desplegar les Cloud Functions i executar el projecte.
 
 ## 📱 Funcionalitats Clau
